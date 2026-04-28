@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
+import com.ror.engine.SoundManager;
 
 public class HappyMealGame extends JFrame implements ActionListener {
 
@@ -12,7 +13,23 @@ public class HappyMealGame extends JFrame implements ActionListener {
     private Image[] backgrounds;
     private int currentBg = 0;
 
+    private SoundManager sound;
+
     public HappyMealGame() {
+
+        sound = new SoundManager();
+        sound.setFile(SoundManager.BGM_MAIN);
+        sound.loop();
+
+        initUI();
+    }
+
+    public HappyMealGame(SoundManager sound) {
+        this.sound = sound;
+        initUI();
+    }
+
+    private void initUI() {
 
         setTitle("Player Registration");
         setSize(800, 600);
@@ -140,9 +157,7 @@ public class HappyMealGame extends JFrame implements ActionListener {
 
         if (name.isEmpty() || age.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "Please enter both Name and Age.",
-                    "Input Required",
-                    JOptionPane.WARNING_MESSAGE);
+                    "Please enter both Name and Age.");
             return;
         }
 
@@ -151,16 +166,15 @@ public class HappyMealGame extends JFrame implements ActionListener {
             if (ageNumber <= 0) throw new NumberFormatException();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
-                    "Enter a valid age.",
-                    "Invalid Input",
-                    JOptionPane.WARNING_MESSAGE);
+                    "Enter a valid age.");
             return;
         }
 
         JOptionPane.showMessageDialog(this,
                 "Welcome " + name + "!");
 
-        new GameModeMenu(name).setVisible(true);
+        new GameModeMenu(name, sound).setVisible(true);
+
         dispose();
     }
 

@@ -1,6 +1,7 @@
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Playable.*;
 import com.ror.gameutil.GuiBattleArena;
+import com.ror.engine.SoundManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -25,52 +26,59 @@ public class HeroSelection extends JFrame implements ActionListener {
     private final JLabel instructionLabel;
 
     private final String mode;
-    private final String difficulty; // Warning fixed: Now stored and used
+    private final String difficulty;
 
     private final ArrayList<String> availableHeroes;
     private String player1Hero = null;
     private String player2Hero = null;
 
+    private SoundManager sound;
+
     public HeroSelection(String playerName, String mode, String difficulty) {
         this.mode = mode;
-        this.difficulty = difficulty; // Warning fixed: Value assigned
+        this.difficulty = difficulty;
 
-        // 1. Window Setup
+        this.sound = null;
+
         setTitle("Happy Meal Tournament - Select Your Hero");
-        setSize(800, 750); // Slightly taller to fit the images comfortably
+        setSize(800, 750);
         setLocationRelativeTo(null);
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // Populate available heroes list
-        String[] heroes = {"Happy Mark", "Happy Ted", "Happy Den", "Happy Ashley",
-                "Happy Vince", "Happy Zack", "Happy Clent", "Happy Trone"};
+        String[] heroes = {
+                "Happy Mark", "Happy Ted", "Happy Den", "Happy Ashley",
+                "Happy Vince", "Happy Zack", "Happy Clent", "Happy Trone"
+        };
+
         availableHeroes = new ArrayList<>();
         Collections.addAll(availableHeroes, heroes);
 
-        // 2. Custom Background Panel
         JPanel mainPanel = new JPanel(new BorderLayout(10, 20)) {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2d = (Graphics2D) g;
-                GradientPaint gp = new GradientPaint(0, 0, new Color(15, 15, 25), 0, getHeight(), new Color(45, 10, 50));
+                GradientPaint gp = new GradientPaint(
+                        0, 0, new Color(15, 15, 25),
+                        0, getHeight(), new Color(45, 10, 50)
+                );
                 g2d.setPaint(gp);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
             }
         };
+
         mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
         setContentPane(mainPanel);
 
-        // --- TOP: Title & Instructions ---
         JPanel topPanel = new JPanel(new GridLayout(2, 1));
         topPanel.setOpaque(false);
 
         JLabel title = new JLabel("CHOOSE YOUR FIGHTER", JLabel.CENTER);
         title.setFont(new Font("Monospaced", Font.BOLD, 32));
-        title.setForeground(new Color(255, 215, 0)); // Arcade Gold
+        title.setForeground(new Color(255, 215, 0));
 
-        instructionLabel = new JLabel(playerName.toUpperCase() + ", SELECT YOUR HERO!", JLabel.CENTER);
+        instructionLabel = new JLabel("SELECT YOUR HERO!", JLabel.CENTER);
         instructionLabel.setFont(new Font("Monospaced", Font.BOLD, 18));
         instructionLabel.setForeground(Color.WHITE);
 
@@ -78,7 +86,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         topPanel.add(instructionLabel);
         mainPanel.add(topPanel, BorderLayout.NORTH);
 
-        // --- CENTER: Hero Grid ---
         JPanel heroPanel = new JPanel(new GridLayout(2, 4, 15, 15));
         heroPanel.setOpaque(false);
 
@@ -92,36 +99,24 @@ public class HeroSelection extends JFrame implements ActionListener {
         trone = createHeroButton("Happy Trone", "images/characters/trone.jpg");
 
         JButton[] heroButtons = {mark, ted, den, ashley, vince, zack, clent, trone};
-        for(JButton b : heroButtons) {
-            heroPanel.add(b);
-        }
+        for (JButton b : heroButtons) heroPanel.add(b);
+
         mainPanel.add(heroPanel, BorderLayout.CENTER);
 
-        // --- BOTTOM: Back Button ---
-        JPanel backPanel = new JPanel();
-        backPanel.setOpaque(false);
-
         backButton = new JButton("BACK TO MENU");
-        backButton.setFont(new Font("Monospaced", Font.BOLD, 18));
-        backButton.setBackground(new Color(70, 70, 80));
-        backButton.setForeground(Color.WHITE);
-        backButton.setFocusPainted(false);
-        backButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        backButton.setBorder(BorderFactory.createCompoundBorder(
-                new LineBorder(Color.GRAY, 2),
-                new EmptyBorder(10, 20, 10, 20)
-        ));
-
         backButton.addActionListener(e -> {
-            new GameModeMenu(playerName).setVisible(true);
+            new GameModeMenu("Player").setVisible(true);
             dispose();
         });
 
-        backPanel.add(backButton);
-        mainPanel.add(backPanel, BorderLayout.SOUTH);
+        mainPanel.add(backButton, BorderLayout.SOUTH);
     }
 
-    // Helper method to style the character portraits
+    public HeroSelection(String playerName, String mode, String difficulty, SoundManager sound) {
+        this(playerName, mode, difficulty);
+        this.sound = sound;
+    }
+
     private JButton createHeroButton(String heroName, String imagePath) {
         JButton btn = new JButton(heroName);
         btn.setFont(new Font("Monospaced", Font.BOLD, 14));
@@ -131,15 +126,14 @@ public class HeroSelection extends JFrame implements ActionListener {
         btn.setHorizontalTextPosition(SwingConstants.CENTER);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new LineBorder(new Color(220, 20, 60), 2)); // Crimson border
+        btn.setBorder(new LineBorder(new Color(220, 20, 60), 2));
 
         try {
             ImageIcon icon = new ImageIcon(imagePath);
-            // Scale image nicely to fit the grid
-            Image scaledImage = icon.getImage().getScaledInstance(140, 140, Image.SCALE_SMOOTH);
-            btn.setIcon(new ImageIcon(scaledImage));
+            Image scaled = icon.getImage().getScaledInstance(140, 140, Image.SCALE_SMOOTH);
+            btn.setIcon(new ImageIcon(scaled));
         } catch (Exception ex) {
-            System.out.println("DEBUG: Could not load image " + imagePath);
+            System.out.println("Image not found: " + imagePath);
         }
 
         btn.addActionListener(this);
@@ -148,12 +142,11 @@ public class HeroSelection extends JFrame implements ActionListener {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == backButton) return;
 
-        JButton selected = (JButton)e.getSource();
+        JButton selected = (JButton) e.getSource();
         String chosenHero = selected.getText();
 
-        switch(mode) {
+        switch (mode) {
             case "PvP": handlePvP(chosenHero); break;
             case "PvAI": handlePvAI(chosenHero); break;
             case "Arcade": handleArcade(chosenHero); break;
@@ -161,15 +154,10 @@ public class HeroSelection extends JFrame implements ActionListener {
     }
 
     private void handlePvP(String chosenHero) {
-        if(player1Hero == null) {
+        if (player1Hero == null) {
             player1Hero = chosenHero;
             availableHeroes.remove(chosenHero);
-
-            // Update UI to prompt Player 2
-            instructionLabel.setText("PLAYER 2, SELECT YOUR HERO!");
-            instructionLabel.setForeground(new Color(50, 255, 50)); // Green to indicate shift
-            refreshButtons();
-
+            instructionLabel.setText("PLAYER 2 SELECT HERO!");
         } else {
             player2Hero = chosenHero;
             launchBattleArena();
@@ -180,15 +168,11 @@ public class HeroSelection extends JFrame implements ActionListener {
         player1Hero = chosenHero;
         availableHeroes.remove(chosenHero);
 
-        // Crash fix: AI now properly selects a random hero
-        Random rand = new Random();
-        player2Hero = availableHeroes.get(rand.nextInt(availableHeroes.size()));
+        Random r = new Random();
+        player2Hero = availableHeroes.get(r.nextInt(availableHeroes.size()));
 
-        // Warning fix: Difficulty is now used in the prompt
         JOptionPane.showMessageDialog(this,
-                "You selected: " + player1Hero + "\nAI selected: " + player2Hero + "\nDifficulty: " + difficulty,
-                "Match Found",
-                JOptionPane.INFORMATION_MESSAGE);
+                "AI selected: " + player2Hero + "\nDifficulty: " + difficulty);
 
         launchBattleArena();
     }
@@ -197,43 +181,38 @@ public class HeroSelection extends JFrame implements ActionListener {
         player1Hero = chosenHero;
         availableHeroes.remove(chosenHero);
 
-        Random rand = new Random();
-        player2Hero = availableHeroes.get(rand.nextInt(availableHeroes.size()));
+        Random r = new Random();
+        player2Hero = availableHeroes.get(r.nextInt(availableHeroes.size()));
 
-        JOptionPane.showMessageDialog(this,
-                "You selected: " + player1Hero + "\nEnemy selected: " + player2Hero + "\n\nUse W A S D to move!",
-                "Arcade Survival",
-                JOptionPane.WARNING_MESSAGE);
-
-        launchArcadeMode(); // <--- THIS IS THE CRUCIAL FIX
+        launchArcadeMode();
     }
 
-    // --- THE ENGINE HOOK ---
-    // This converts the String names into our actual data objects and starts the game
     private void launchBattleArena() {
-        Entity p1 = createHeroEntity(player1Hero);
-        Entity p2 = createHeroEntity(player2Hero);
 
-        System.out.println("DEBUG: Launching Arena! " + p1.getName() + " VS " + p2.getName());
+        if (sound != null) sound.stop();
 
-        new GuiBattleArena(p1, p2).setVisible(true);
+        new GuiBattleArena(
+                createHeroEntity(player1Hero),
+                createHeroEntity(player2Hero)
+        ).setVisible(true);
+
         dispose();
     }
 
-    // Launches the real-time 2D environment
     private void launchArcadeMode() {
-        Entity p1 = createHeroEntity(player1Hero);
-        Entity p2 = createHeroEntity(player2Hero);
 
-        System.out.println("DEBUG: Launching 2D Arcade Engine!");
+        if (sound != null) sound.stop();
 
-        new com.ror.gameutil.ArcadeFrame(p1, p2).setVisible(true);
+        new com.ror.gameutil.ArcadeFrame(
+                createHeroEntity(player1Hero),
+                createHeroEntity(player2Hero)
+        ).setVisible(true);
+
         dispose();
     }
 
-    // Factory method to generate specific characters
     private Entity createHeroEntity(String heroName) {
-        switch(heroName) {
+        switch (heroName) {
             case "Happy Mark": return new Mark();
             case "Happy Ted": return new Ted();
             case "Happy Den": return new Den();
@@ -242,18 +221,7 @@ public class HeroSelection extends JFrame implements ActionListener {
             case "Happy Zack": return new Zack();
             case "Happy Clent": return new Clent();
             case "Happy Trone": return new Trone();
-            default: return new Mark(); // Fallback
-        }
-    }
-
-    private void refreshButtons() {
-        // Disables the button of the hero that was already picked
-        JButton[] allButtons = {mark, ted, den, ashley, vince, zack, clent, trone};
-        for (JButton btn : allButtons) {
-            if (!availableHeroes.contains(btn.getText())) {
-                btn.setEnabled(false);
-                btn.setBorder(new LineBorder(Color.DARK_GRAY, 2));
-            }
+            default: return new Mark();
         }
     }
 }

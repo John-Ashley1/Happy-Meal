@@ -2,6 +2,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
+import com.ror.engine.SoundManager;
 
 public class GameModeMenu extends JFrame implements ActionListener {
 
@@ -12,8 +13,21 @@ public class GameModeMenu extends JFrame implements ActionListener {
     private Image[] backgrounds;
     private int currentBg = 0;
 
+    private SoundManager sound;
+
     public GameModeMenu(String name) {
         this.playerName = name;
+        this.sound = null;
+        initUI();
+    }
+
+    public GameModeMenu(String name, SoundManager sound) {
+        this.playerName = name;
+        this.sound = sound;
+        initUI();
+    }
+
+    private void initUI() {
 
         setTitle("Happy Meal Tournament - Select Game Mode");
         setSize(800, 600);
@@ -79,7 +93,7 @@ public class GameModeMenu extends JFrame implements ActionListener {
         arcade.addActionListener(this);
 
         backButton.addActionListener(e -> {
-            new HappyMealGame().setVisible(true);
+            new HappyMealGame(sound).setVisible(true);
             dispose();
         });
 
@@ -144,7 +158,7 @@ public class GameModeMenu extends JFrame implements ActionListener {
             selectedMode = "Arcade";
         }
 
-        new HeroSelection(playerName, selectedMode, difficulty).setVisible(true);
+        new HeroSelection(playerName, selectedMode, difficulty, sound).setVisible(true);
         dispose();
     }
 

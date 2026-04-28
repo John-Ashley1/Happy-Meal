@@ -1,13 +1,30 @@
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import com.ror.engine.SoundManager;
 
 public class IntroScreen extends JFrame {
 
     private JPanel mainPanel;
     private JButton startButton;
+    private SoundManager sound;
 
     public IntroScreen() {
+
+        sound = new SoundManager();
+        sound.setFile(SoundManager.BGM_MAIN);
+        sound.loop();
+
+        initUI();
+    }
+
+    public IntroScreen(SoundManager sound) {
+        this.sound = sound;
+        initUI();
+    }
+
+    private void initUI() {
+
         setTitle("Happy Meal");
         setSize(800, 600);
         setLocationRelativeTo(null);
@@ -15,6 +32,7 @@ public class IntroScreen extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         mainPanel = new JPanel() {
+
             private Image[] backgrounds;
             private int currentBg = 0;
 
@@ -44,6 +62,8 @@ public class IntroScreen extends JFrame {
             }
         };
 
+        setContentPane(mainPanel);
+
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         mainPanel.setBorder(new EmptyBorder(100, 50, 100, 50));
 
@@ -65,7 +85,7 @@ public class IntroScreen extends JFrame {
         ));
 
         startButton.addActionListener(e -> {
-            new HappyMealGame().setVisible(true);
+            new HappyMealGame(sound).setVisible(true);
             dispose();
         });
 
@@ -74,8 +94,6 @@ public class IntroScreen extends JFrame {
         mainPanel.add(Box.createRigidArea(new Dimension(0, 40)));
         mainPanel.add(startButton);
         mainPanel.add(Box.createVerticalGlue());
-
-        setContentPane(mainPanel);
     }
 
     public static void main(String[] args) {
@@ -106,15 +124,6 @@ public class IntroScreen extends JFrame {
                     0, getHeight(), new Color(255, 140, 0)
             ));
             g2d.drawString(text, x, y);
-
-            g2d.setColor(new Color(150, 0, 0));
-            g2d.setStroke(new BasicStroke(3f));
-
-            Shape outline = font.createGlyphVector(
-                    g2d.getFontRenderContext(), text
-            ).getOutline(x, y);
-
-            g2d.draw(outline);
         }
     }
 }
