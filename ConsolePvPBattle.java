@@ -1,324 +1,525 @@
 package com.ror.gameutil;
 
+
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Skill;
 import com.ror.gamemodel.Playable.*;
 
-import java.util.*;
-import java.util.concurrent.*;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 
-public class ConsolePvPBattle {
+/**
+ * GuiPvPBattle — Best-of-3 PvP Battle Arena
+ * Place in: com/ror/gameutil/
+ * Hook in HeroSelection.launchBattleArena() for PvP mode.
+ */
+public class ConsolePvPBattle extends JFrame implements BattleView {
 
-    // COLOR CODES
-    static final String RESET   = "\u001B[0m";
-    static final String BOLD    = "\u001B[1m";
-    static final String RED     = "\u001B[31m";
-    static final String GREEN   = "\u001B[32m";
-    static final String YELLOW  = "\u001B[33m";
-    static final String BLUE    = "\u001B[34m";
-    static final String MAGENTA = "\u001B[35m";
-    static final String CYAN    = "\u001B[36m";
-    static final String WHITE   = "\u001B[37m";
+    // Data Models
+    private final String p1Name, p2Name;
+    private Entity player1;
+    private Entity player2;
+    private boolean isPlayer1Turn = true;
 
-    // ─── STATUS EFFECT CONSTANTS
-    static final String STATUS_NONE   = "NONE";
-    static final String STATUS_POISON = "POISON";
-    static final String STATUS_STUN   = "STUN";
-    static final String STATUS_BURN   = "BURN";
 
-    // ─── STATUS EFFECT TRACKING
-    static Map<Entity, String> statusEffects   = new HashMap<>();
-    static Map<Entity, Integer> statusDuration = new HashMap<>();
+    // Round Tracking
+    private int currentRound  = 1;
+    private int p1Wins        = 0;
+    private int p2Wins        = 0;
+    private static final int MAX_ROUNDS = 3;
+    private Timer turnTimer;
+    private int timeLeft = 10;
+    private JLabel timerLabel;
 
-    // ─── TURN TIMER
-    static final int TURN_TIME_SECONDS = 20;
+    // UI Components
+    private JProgressBar p1HealthBar, p2HealthBar;
+    private JLabel p1NameLabel, p2NameLabel;
+    private JLabel p1StatsLabel, p2StatsLabel;
+    private JLabel turnLabel;
+    private JLabel roundLabel;
+    private JLabel scoreLabel;
+    private JTextArea combatLog;
+    private JPanel skillsPanel;
 
-    // ─── USER INPUT (shared for timer thread)
-    static volatile int timedChoice = -1;
+    // Colors
+    private static final Color BG       = new Color(15, 15, 25);
+    private static final Color PANEL_BG = new Color(25, 25, 40);
+    private static final Color GOLD     = new Color(255, 215, 0);
+    private static final Color P1_COLOR = new Color(50, 180, 255);
+    private static final Color P2_COLOR = new Color(220, 20,  60);
+    private static final Color HP_GREEN = new Color(50, 220, 80);
+    private static final Color HP_LOW   = new Color(220, 60, 60);
+    private static final Color MANA_COL = new Color(80, 130, 255);
+    private static final Color LOG_FG   = new Color(200, 200, 200);
+    private static final Color SKILL_BG = new Color(30, 30, 50);
+    private static final Color SKILL_CD = new Color(20, 20, 30);
 
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-        BattleView view = new ConsoleBattleView();
+    // Fonts
+    private static final Font TITLE_FONT = new Font("Monospaced", Font.BOLD, 18);
+    private static final Font STAT_FONT  = new Font("Monospaced", Font.PLAIN, 13);
+    private static final Font LOG_FONT   = new Font("Monospaced", Font.PLAIN, 13);
+    private static final Font BTN_FONT   = new Font("Monospaced", Font.BOLD, 13);
+    private static final Font TURN_FONT  = new Font("Monospaced", Font.BOLD, 15);
+    private static final Font ROUND_FONT = new Font("Monospaced", Font.BOLD, 13);
 
-        printBanner();
 
-        //  Character Selection Phase
-        Entity player1 = selectHero(scanner, "Player 1", CYAN);
-        Entity player2 = selectHero(scanner, "Player 2", MAGENTA);
+    public ConsolePvPBattle(Entity player1, Entity player2) {
+        this.player1 = player1;
+        this.player2 = player2;
+        this.p1Name  = player1.getName();
+        this.p2Name  = player2.getName();
 
-        statusEffects.put(player1, STATUS_NONE);
-        statusEffects.put(player2, STATUS_NONE);
-        statusDuration.put(player1, 0);
-        statusDuration.put(player2, 0);
+        setTitle("Happy Meal Tournament — PvP Battle");
+        setSize(870, 680);
+        setLocationRelativeTo(null);
+        setResizable(false);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        System.out.println("\n" + BOLD + YELLOW +
-                "★ BATTLE START: " + player1.getName().toUpperCase() +
-                " VS " + player2.getName().toUpperCase() + " ★" + RESET + "\n");
+        JPanel root = new JPanel(new BorderLayout(6, 6));
+        root.setBackground(BG);
+        root.setBorder(new EmptyBorder(8, 8, 8, 8));
+        setContentPane(root);
 
-        boolean isPlayer1Turn = true;
+        buildTopPanel(root);
+        buildCenterLog(root);
+        buildBottomPanel(root);
 
-        // The Combat Loop
-        while (!player1.isDead() && !player2.isDead()) {
-            Entity activePlayer = isPlayer1Turn ? player1 : player2;
-            Entity targetPlayer = isPlayer1Turn ? player2 : player1;
-            String activeColor  = isPlayer1Turn ? CYAN : MAGENTA;
+        logMessage("★  ROUND 1  —  " + p1Name + "  VS  " + p2Name + "  ★");
+        updateTurnUI();
+    }
 
-            System.out.println("\n" + activeColor + BOLD +
-                    "╔══════════════════════════════════════╗");
-            System.out.println("   ► " + activePlayer.getName().toUpperCase() + "'S TURN ◄");
-            System.out.println("╚══════════════════════════════════════╝" + RESET);
+    //TOP: Round bar + Player 2 stats
+    private void buildTopPanel(JPanel root) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 4));
+        wrapper.setBackground(BG);
 
-            // Display Stats
-            printStats(player1, player2);
+        turnLabel = new JLabel("", JLabel.CENTER);
+        timerLabel = new JLabel("⏳ Time Left: 10", JLabel.CENTER);
+        timerLabel.setFont(new Font("Monospaced", Font.BOLD, 13));
+        timerLabel.setForeground(Color.ORANGE);
+        // Round / Score bar
 
-            // Apply Status Effects
-            if (applyStatusEffect(activePlayer, view)) {
-                // Player is stunned — skip turn
-                isPlayer1Turn = !isPlayer1Turn;
-                pause(1000);
-                continue;
-            }
+        wrapper.add(turnLabel, BorderLayout.NORTH);
+        JPanel turnPanel = new JPanel(new GridLayout(2, 1));
+        turnPanel.setBackground(BG);
+        turnPanel.add(turnLabel);
+        turnPanel.add(timerLabel);
 
-            // reduce cooldowns
-            for (Skill skill : activePlayer.getSkills()) {
-                skill.reduceCooldown();
-            }
+        wrapper.add(turnPanel, BorderLayout.NORTH);
 
-            // display ang skills
-            System.out.println("\n" + BOLD + WHITE + "Choose your skill:" + RESET);
-            int skillIndex = 1;
-            for (Skill skill : activePlayer.getSkills()) {
-                if (skill.isReady()) {
-                    System.out.println(GREEN + "  " + skillIndex + ". " + skill.getName() +
-                            " [READY] " + RESET + "- " + skill.getDescription());
-                } else {
-                    System.out.println(RED + "  " + skillIndex + ". " + skill.getName() +
-                            " [COOLDOWN: " + skill.getCooldown() + " turns] " + RESET +
-                            "- " + skill.getDescription());
-                }
-                skillIndex++;
-            }
+        JPanel roundBar = new JPanel(new GridLayout(1, 3));
+        roundBar.setBackground(new Color(20, 20, 35));
+        roundBar.setBorder(new EmptyBorder(4, 10, 4, 10));
 
-            // timed input
-            int choice = getTimedInput(scanner, activePlayer, TURN_TIME_SECONDS);
+        roundLabel = new JLabel("ROUND  1 / 3", JLabel.LEFT);
+        roundLabel.setFont(ROUND_FONT);
+        roundLabel.setForeground(GOLD);
 
-            // Auto-pick first ready skill if time runs out
-            if (choice == -1) {
-                System.out.println(YELLOW + "\n⏰ Time's up! Auto-selecting first available skill..." + RESET);
-                choice = getFirstReadySkillIndex(activePlayer);
-            }
+        scoreLabel = new JLabel(p1Name + "  0  —  0  " + p2Name, JLabel.CENTER);
+        scoreLabel.setFont(ROUND_FONT);
+        scoreLabel.setForeground(Color.WHITE);
 
-            Skill selectedSkill = activePlayer.getSkills().get(choice - 1);
+        // Back to Menu button
+        JButton backBtn = new JButton("◀ MENU");
+        backBtn.setFont(new Font("Monospaced", Font.BOLD, 12));
+        backBtn.setBackground(new Color(50, 50, 65));
+        backBtn.setForeground(Color.WHITE);
+        backBtn.setFocusPainted(false);
+        backBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        backBtn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.GRAY, 1),
+                new EmptyBorder(2, 8, 2, 8)));
+        backBtn.addActionListener(e -> returnToMenu());
 
-            // Execute Skill
-            System.out.println();
-            selectedSkill.apply(activePlayer, targetPlayer, view);
-            selectedSkill.resetCooldown();
+        JPanel btnWrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        btnWrap.setBackground(new Color(20, 20, 35));
+        btnWrap.add(backBtn);
 
-            // Random chance to apply status effect on hit
-            applyRandomStatusOnHit(targetPlayer);
+        roundBar.add(roundLabel);
+        roundBar.add(scoreLabel);
+        roundBar.add(btnWrap);
 
-            // end turn
-            if (targetPlayer.isDead()) {
-                printKO(targetPlayer, activePlayer);
-                break;
-            }
+        // Player 2 panel (opponent — shown at top)
+        JPanel p2Panel = new JPanel(new BorderLayout(12, 0));
+        p2Panel.setBackground(PANEL_BG);
+        p2Panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(P2_COLOR, 2),
+                new EmptyBorder(6, 10, 6, 10)));
 
-            isPlayer1Turn = !isPlayer1Turn;
-            pause(1500);
+        p2NameLabel = new JLabel(player2.getName());
+        p2NameLabel.setForeground(P2_COLOR);
+        p2NameLabel.setFont(TITLE_FONT);
+
+        p2HealthBar = makeHealthBar(player2);
+
+        p2StatsLabel = new JLabel("Mana: " + player2.getCurrentMana());
+        p2StatsLabel.setForeground(MANA_COL);
+        p2StatsLabel.setFont(STAT_FONT);
+
+        p2Panel.add(p2NameLabel,  BorderLayout.WEST);
+        p2Panel.add(p2HealthBar,  BorderLayout.CENTER);
+        p2Panel.add(p2StatsLabel, BorderLayout.EAST);
+
+        wrapper.add(roundBar, BorderLayout.NORTH);
+        wrapper.add(p2Panel,  BorderLayout.CENTER);
+
+        root.add(wrapper, BorderLayout.NORTH);
+    }
+
+    // CENTER: Combat log
+    private void buildCenterLog(JPanel root) {
+        combatLog = new JTextArea();
+        combatLog.setBackground(new Color(10, 10, 18));
+        combatLog.setForeground(LOG_FG);
+        combatLog.setFont(LOG_FONT);
+        combatLog.setEditable(false);
+        combatLog.setLineWrap(true);
+        combatLog.setWrapStyleWord(true);
+        combatLog.setBorder(new EmptyBorder(6, 8, 6, 8));
+
+        JScrollPane scroll = new JScrollPane(combatLog);
+        scroll.setBorder(BorderFactory.createLineBorder(GOLD, 1));
+        scroll.getVerticalScrollBar().setBackground(BG);
+
+        root.add(scroll, BorderLayout.CENTER);
+    }
+
+    // BOTTOM: Player 1 stats + turn label + skill buttons
+    private void buildBottomPanel(JPanel root) {
+        JPanel wrapper = new JPanel(new BorderLayout(0, 6));
+        wrapper.setBackground(BG);
+
+        turnLabel = new JLabel("", JLabel.CENTER);
+        turnLabel.setFont(TURN_FONT);
+        turnLabel.setBorder(new EmptyBorder(3, 0, 3, 0));
+
+        // Player 1 panel (current player — shown at bottom)
+        JPanel p1Panel = new JPanel(new BorderLayout(12, 0));
+        p1Panel.setBackground(PANEL_BG);
+        p1Panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(P1_COLOR, 2),
+                new EmptyBorder(6, 10, 6, 10)));
+
+        p1NameLabel = new JLabel(player1.getName());
+        p1NameLabel.setForeground(P1_COLOR);
+        p1NameLabel.setFont(TITLE_FONT);
+
+        p1HealthBar = makeHealthBar(player1);
+        p1HealthBar.setStringPainted(true);
+        p1HealthBar.setString("HP: " + player1.getCurrentHealth() + "/" + player1.getMaxHealth());
+
+        p1StatsLabel = new JLabel("Mana: " + player1.getCurrentMana());
+        p1StatsLabel.setForeground(MANA_COL);
+        p1StatsLabel.setFont(STAT_FONT);
+
+        p1Panel.add(p1NameLabel,  BorderLayout.WEST);
+        p1Panel.add(p1HealthBar,  BorderLayout.CENTER);
+        p1Panel.add(p1StatsLabel, BorderLayout.EAST);
+
+        skillsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
+        skillsPanel.setBackground(BG);
+        skillsPanel.setPreferredSize(new Dimension(850, 58));
+
+        JPanel statusAndSkills = new JPanel(new BorderLayout(0, 6));
+        statusAndSkills.setBackground(BG);
+        statusAndSkills.add(p1Panel,     BorderLayout.NORTH);
+        statusAndSkills.add(skillsPanel, BorderLayout.SOUTH);
+
+        wrapper.add(turnLabel,       BorderLayout.NORTH);
+        wrapper.add(statusAndSkills, BorderLayout.CENTER);
+
+        root.add(wrapper, BorderLayout.SOUTH);
+    }
+
+    // ── GAME LOGIC
+    private void updateTurnUI() {
+        Entity active = isPlayer1Turn ? player1 : player2;
+        Color  tColor = isPlayer1Turn ? P1_COLOR : P2_COLOR;
+
+        turnLabel.setText("▶  " + active.getName().toUpperCase() + "'S TURN");
+        turnLabel.setForeground(tColor);
+
+        for (Skill skill : active.getSkills()) {
+            skill.reduceCooldown();
         }
 
-        scanner.close();
+        refreshBars();
+        rebuildSkillButtons(active, tColor);
+        startTurnTimer();
     }
 
-    // ─── PRINT BANNER
-    static void printBanner() {
-        System.out.println(YELLOW + BOLD);
-        System.out.println("  ██╗  ██╗ █████╗ ██████╗ ██████╗ ██╗   ██╗");
-        System.out.println("  ██║  ██║██╔══██╗██╔══██╗██╔══██╗╚██╗ ██╔╝");
-        System.out.println("  ███████║███████║██████╔╝██████╔╝ ╚████╔╝ ");
-        System.out.println("  ██╔══██║██╔══██║██╔═══╝ ██╔═══╝   ╚██╔╝  ");
-        System.out.println("  ██║  ██║██║  ██║██║     ██║        ██║   ");
-        System.out.println("  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝        ╚═╝   ");
-        System.out.println("       MEAL TOURNAMENT - PvP EDITION         ");
-        System.out.println(RESET);
+    private void rebuildSkillButtons(Entity active, Color tColor) {
+        skillsPanel.removeAll();
+
+        for (Skill skill : active.getSkills()) {
+            JButton btn = new JButton();
+            btn.setFont(BTN_FONT);
+            btn.setFocusPainted(false);
+
+            if (skill.isReady()) {
+                btn.setText("<html><center>" + skill.getName() + "</center></html>");
+                btn.setBackground(SKILL_BG);
+                btn.setForeground(Color.WHITE);
+                btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(tColor, 2),
+                        new EmptyBorder(4, 6, 4, 6)));
+                btn.addActionListener(e -> executeSkill(skill));
+            } else {
+                btn.setText("<html><center>" + skill.getName()
+                        + "<br><font color='gray'>(CD: " + skill.getCooldown() + ")</font></center></html>");
+                btn.setBackground(SKILL_CD);
+                btn.setForeground(Color.GRAY);
+                btn.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 1));
+                btn.setEnabled(false);
+            }
+            skillsPanel.add(btn);
+        }
+
+        skillsPanel.revalidate();
+        skillsPanel.repaint();
     }
 
-    // ─── PRINT STATS
-    static void printStats(Entity p1, Entity p2) {
-        System.out.println(BOLD + "\n  ┌─────────────────────────────────────┐");
-        printPlayerStat(p1, CYAN);
-        printPlayerStat(p2, MAGENTA);
-        System.out.println("  └─────────────────────────────────────┘" + RESET);
+    private void executeSkill(Skill skill) {
+        Entity active = isPlayer1Turn ? player1 : player2;
+        Entity target = isPlayer1Turn ? player2 : player1;
+
+        skill.apply(active, target, this);
+        skill.resetCooldown();
+        refreshBars();
+
+        if (turnTimer != null) {
+            turnTimer.stop();
+        }
+
+        if (target.isDead()) {
+            if (isPlayer1Turn) p1Wins++; else p2Wins++;
+
+            logMessage("\n★ K.O.!  " + target.getName() + " is down!");
+            logMessage("★ Round " + currentRound + " winner:  " + active.getName().toUpperCase() + "!\n");
+
+            disableSkills();
+            updateScoreLabel();
+
+            // Short pause then evaluate round result
+            Timer t = new Timer(1800, e -> checkRoundOver());
+            t.setRepeats(false);
+            t.start();
+            return;
+        }
+
+        isPlayer1Turn = !isPlayer1Turn;
+        updateTurnUI();
     }
 
-    static void printPlayerStat(Entity p, String color) {
-        String status = statusEffects.getOrDefault(p, STATUS_NONE);
-        String statusTag = status.equals(STATUS_NONE) ? "" :
-                (status.equals(STATUS_POISON) ? RED + " [☠ POISONED]" :
-                        status.equals(STATUS_BURN)   ? YELLOW + " [🔥 BURNED]" :
-                                RED + " [⚡ STUNNED]") + RESET;
-
-        int hpPercent = (int)((double) p.getCurrentHealth() / p.getMaxHealth() * 20);
-        String hpBar = GREEN + "█".repeat(hpPercent) + RED + "░".repeat(20 - hpPercent) + RESET;
-
-        System.out.println(color + "  │ " + BOLD + p.getName() + RESET + color +
-                " | HP: " + p.getCurrentHealth() + "/" + p.getMaxHealth() +
-                " [" + hpBar + color + "]" +
-                " | Mana: " + p.getCurrentMana() + statusTag + color + "  │" + RESET);
+    private void checkRoundOver() {
+        if (p1Wins >= 2) {
+            showMatchWinner(p1Name);
+        } else if (p2Wins >= 2) {
+            showMatchWinner(p2Name);
+        } else if (currentRound >= MAX_ROUNDS) {
+            if      (p1Wins > p2Wins) showMatchWinner(p1Name);
+            else if (p2Wins > p1Wins) showMatchWinner(p2Name);
+            else                       showDraw();
+        } else {
+            currentRound++;
+            startNextRound();
+        }
     }
 
-    // ─── TIMED INPUT RA
-    static int getTimedInput(Scanner scanner, Entity activePlayer, int seconds) {
-        timedChoice = -1;
-        ExecutorService executor = Executors.newSingleThreadExecutor();
+    private void startNextRound() {
+        player1 = createFreshEntity(p1Name);
+        player2 = createFreshEntity(p2Name);
+        isPlayer1Turn = true;
 
-        Future<?> inputFuture = executor.submit(() -> {
-            System.out.print(CYAN + "\n⏱ Enter skill number (" + seconds + "s): " + RESET);
-            while (true) {
-                if (scanner.hasNextInt()) {
-                    int input = scanner.nextInt();
-                    if (input >= 1 && input <= activePlayer.getSkills().size()) {
-                        Skill s = activePlayer.getSkills().get(input - 1);
-                        if (s.isReady()) {
-                            timedChoice = input;
-                            return;
-                        } else {
-                            System.out.println(RED + "That skill is on cooldown! Try another." + RESET);
-                            System.out.print(CYAN + "Enter skill number: " + RESET);
-                        }
-                    } else {
-                        System.out.println(RED + "Invalid number." + RESET);
-                        System.out.print(CYAN + "Enter skill number: " + RESET);
-                    }
-                } else {
-                    scanner.next();
-                }
+        p1NameLabel.setText(player1.getName());
+        p2NameLabel.setText(player2.getName());
+        p1HealthBar.setMaximum(player1.getMaxHealth());
+        p2HealthBar.setMaximum(player2.getMaxHealth());
+        roundLabel.setText("ROUND  " + currentRound + " / 3");
+
+        logMessage("══════════════════════════════════════");
+        logMessage("        ★  ROUND " + currentRound + "  START!  ★");
+        logMessage("══════════════════════════════════════\n");
+
+        updateTurnUI();
+    }
+
+    private void showMatchWinner(String name) {
+        String msg = "🏆  " + name.toUpperCase() + " WINS THE MATCH!\n"
+                + "Score:  " + p1Name + "  " + p1Wins + "  —  " + p2Wins + "  " + p2Name;
+
+        logMessage("\n╔══════════════════════════════════════╗");
+        logMessage("   🏆  MATCH WINNER:  " + name.toUpperCase());
+        logMessage("   Score: " + p1Name + " " + p1Wins + " — " + p2Wins + " " + p2Name);
+        logMessage("╚══════════════════════════════════════╝\n");
+
+        int choice = JOptionPane.showOptionDialog(this,
+                msg, "Match Over",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                new String[]{"Play Again", "Back to Menu"},
+                "Play Again");
+
+        if (choice == 0) restartMatch();
+        else             returnToMenu();
+    }
+
+    private void showDraw() {
+        logMessage("\n★  IT'S A DRAW!  Both fighters are evenly matched!\n");
+
+        int choice = JOptionPane.showOptionDialog(this,
+                "It's a DRAW!\nScore: " + p1Name + " " + p1Wins + " — " + p2Wins + " " + p2Name,
+                "Match Draw",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                new String[]{"Play Again", "Back to Menu"},
+                "Play Again");
+
+        if (choice == 0) restartMatch();
+        else             returnToMenu();
+    }
+
+    private void restartMatch() {
+        dispose();
+        new ConsolePvPBattle(createFreshEntity(p1Name), createFreshEntity(p2Name)).setVisible(true);
+    }
+
+
+
+    private void returnToMenu() {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Return to the main menu?\nCurrent match progress will be lost.",
+                "Back to Menu",
+                JOptionPane.YES_NO_OPTION);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            dispose();
+            try {
+                Class<?> menuClass = Class.forName("GameModeMenu");
+                java.lang.reflect.Constructor<?> ctor = menuClass.getConstructor(String.class);
+                JFrame menu = (JFrame) ctor.newInstance(p1Name);
+                menu.setVisible(true);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    // HELPERS
+    private void refreshBars() {
+        p2HealthBar.setValue(player2.getCurrentHealth());
+        updateBarColor(p2HealthBar, player2);
+        p2StatsLabel.setText("Mana: " + player2.getCurrentMana());
+
+        p1HealthBar.setValue(player1.getCurrentHealth());
+        p1HealthBar.setString("HP: " + player1.getCurrentHealth() + "/" + player1.getMaxHealth());
+        updateBarColor(p1HealthBar, player1);
+        p1StatsLabel.setText("Mana: " + player1.getCurrentMana());
+    }
+
+    private void updateBarColor(JProgressBar bar, Entity e) {
+        double ratio = (double) e.getCurrentHealth() / e.getMaxHealth();
+        bar.setForeground(ratio > 0.4 ? HP_GREEN : HP_LOW);
+    }
+
+    private void updateScoreLabel() {
+        scoreLabel.setText(p1Name + "  " + p1Wins + "  —  " + p2Wins + "  " + p2Name);
+    }
+
+    private void disableSkills() {
+        skillsPanel.removeAll();
+        skillsPanel.revalidate();
+        skillsPanel.repaint();
+    }
+
+    private JProgressBar makeHealthBar(Entity e) {
+        JProgressBar bar = new JProgressBar(0, e.getMaxHealth());
+        bar.setValue(e.getCurrentHealth());
+        bar.setPreferredSize(new Dimension(380, 26));
+        bar.setForeground(HP_GREEN);
+        bar.setBackground(new Color(40, 40, 40));
+        bar.setStringPainted(false);
+        bar.setBorderPainted(false);
+        return bar;
+    }
+
+    private Entity createFreshEntity(String name) {
+        switch (name) {
+            case "Mark":   return new Mark();
+            case "Ted":    return new Ted();
+            case "Den":    return new Den();
+            case "Ashley": return new Ashley();
+            case "Vince":  return new Vince();
+            case "Zack":   return new Zack();
+            case "Clent":  return new Clent();
+            case "Trone":  return new Trone();
+            default:       return new Mark();
+        }
+    }
+
+    private void startTurnTimer() {
+        if (turnTimer != null && turnTimer.isRunning()) {
+            turnTimer.stop();
+        }
+
+        timeLeft = 10;
+        timerLabel.setText("⏳ Time Left: " + timeLeft);
+
+        turnTimer = new Timer(1000, e -> {
+            timeLeft--;
+            timerLabel.setText("⏳ Time Left: " + timeLeft);
+
+            if (timeLeft <= 0) {
+                turnTimer.stop();
+                applyTimeoutPunishment();
             }
         });
 
-        try {
-            inputFuture.get(seconds, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            inputFuture.cancel(true);
-        } catch (Exception e) {
-            inputFuture.cancel(true);
-        } finally {
-            executor.shutdownNow();
-        }
-
-        return timedChoice;
+        turnTimer.start();
     }
 
-    // ─── FIRST KILL READY
-    static int getFirstReadySkillIndex(Entity player) {
-        int i = 1;
-        for (Skill skill : player.getSkills()) {
-            if (skill.isReady()) return i;
-            i++;
-        }
-        return 1;
-    }
+    private void applyTimeoutPunishment() {
+        Entity active = isPlayer1Turn ? player1 : player2;
+        Entity opponent = isPlayer1Turn ? player2 : player1;
 
-    // ─── STATUS EFFECTS NI
-    static void applyRandomStatusOnHit(Entity target) {
-        Random rand = new Random();
-        int roll = rand.nextInt(100);
-        String current = statusEffects.getOrDefault(target, STATUS_NONE);
+        logMessage("⏰ TIME OUT! " + active.getName() + " failed to act!");
+        logMessage("⚠ " + opponent.getName() + " gets a FREE ATTACK!");
 
-        if (!current.equals(STATUS_NONE)) return; // already has a status
+        Skill punishSkill = opponent.getSkills().get(0);
+        punishSkill.apply(opponent, active, this);
 
-        if (roll < 15) {
-            statusEffects.put(target, STATUS_POISON);
-            statusDuration.put(target, 3);
-            System.out.println(RED + "☠ " + target.getName() + " is POISONED for 3 turns!" + RESET);
-        } else if (roll < 25) {
-            statusEffects.put(target, STATUS_STUN);
-            statusDuration.put(target, 1);
-            System.out.println(MAGENTA + "⚡ " + target.getName() + " is STUNNED for 1 turn!" + RESET);
-        } else if (roll < 35) {
-            statusEffects.put(target, STATUS_BURN);
-            statusDuration.put(target, 3);
-            System.out.println(YELLOW + "🔥 " + target.getName() + " is BURNING for 3 turns!" + RESET);
-        }
-    }
+        refreshBars();
 
-    // (skip turn)
-    static boolean applyStatusEffect(Entity player, BattleView view) {
-        String status = statusEffects.getOrDefault(player, STATUS_NONE);
-        int duration  = statusDuration.getOrDefault(player, 0);
+        if (active.isDead()) {
+            if (isPlayer1Turn) p2Wins++;
+            else p1Wins++;
 
-        if (status.equals(STATUS_NONE) || duration <= 0) {
-            statusEffects.put(player, STATUS_NONE);
-            return false;
+            disableSkills();
+
+            Timer t = new Timer(1800, e -> checkRoundOver());
+            t.setRepeats(false);
+            t.start();
+            return;
         }
 
-        if (status.equals(STATUS_POISON)) {
-            int dmg = 8;
-            player.takeDamage(dmg);
-            System.out.println(RED + "☠ " + player.getName() + " takes " + dmg + " poison damage! (" + (duration - 1) + " turns left)" + RESET);
-        } else if (status.equals(STATUS_BURN)) {
-            int dmg = 12;
-            player.takeDamage(dmg);
-            System.out.println(YELLOW + "🔥 " + player.getName() + " takes " + dmg + " burn damage! (" + (duration - 1) + " turns left)" + RESET);
-        } else if (status.equals(STATUS_STUN)) {
-            System.out.println(MAGENTA + "⚡ " + player.getName() + " is STUNNED and cannot move!" + RESET);
-            statusDuration.put(player, duration - 1);
-            if (statusDuration.get(player) <= 0) statusEffects.put(player, STATUS_NONE);
-            return true; // skip ra
-        }
-
-        statusDuration.put(player, duration - 1);
-        if (statusDuration.get(player) <= 0) statusEffects.put(player, STATUS_NONE);
-        return false;
+        isPlayer1Turn = !isPlayer1Turn;
+        updateTurnUI();
     }
 
-    // ─── KO SCREEN NI
-    static void printKO(Entity loser, Entity winner) {
-        System.out.println("\n" + RED + BOLD);
-        System.out.println("  ██╗  ██╗   ██████╗  ██╗");
-        System.out.println("  ██║ ██╔╝  ██╔═══██╗ ██║");
-        System.out.println("  █████╔╝   ██║   ██║ ██║");
-        System.out.println("  ██╔═██╗   ██║   ██║ ╚═╝");
-        System.out.println("  ██║  ██╗  ╚██████╔╝ ██╗");
-        System.out.println("  ╚═╝  ╚═╝   ╚═════╝  ╚═╝" + RESET);
-        System.out.println(RED + "  " + loser.getName() + " has been defeated!" + RESET);
-        System.out.println(YELLOW + BOLD + "\n  🏆 WINNER: " + winner.getName().toUpperCase() + "! 🏆" + RESET + "\n");
+
+    @Override
+    public void logMessage(String message) {
+        combatLog.append(message + "\n");
+        combatLog.setCaretPosition(combatLog.getDocument().getLength());
     }
 
-    // ─── HERO SELECTION NI
-    static Entity selectHero(Scanner scanner, String playerLabel, String color) {
-        System.out.println("\n" + color + BOLD + playerLabel + ", choose your hero:" + RESET);
-        System.out.println(color +
-                "  1. Mark    2. Ted\n" +
-                "  3. Den     4. Ashley\n" +
-                "  5. Vince   6. Zack\n" +
-                "  7. Clent   8. Trone" + RESET);
-
-        while (true) {
-            System.out.print(color + "Enter hero number (1-8): " + RESET);
-            if (scanner.hasNextInt()) {
-                int choice = scanner.nextInt();
-                switch (choice) {
-                    case 1: return new Mark();
-                    case 2: return new Ted();
-                    case 3: return new Den();
-                    case 4: return new Ashley();
-                    case 5: return new Vince();
-                    case 6: return new Zack();
-                    case 7: return new Clent();
-                    case 8: return new Trone();
-                    default: System.out.println(RED + "Invalid choice. Try again." + RESET);
-                }
-            } else {
-                System.out.println(RED + "Please enter a number." + RESET);
-                scanner.next();
-            }
-        }
-    }
-
-    // ─── UTILITY ra NI
-    static void pause(int ms) {
-        try { Thread.sleep(ms); } catch (InterruptedException e) {}
+    // ── QUICK TEST
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() ->
+                new ConsolePvPBattle(new Mark(), new Ted()).setVisible(true));
     }
 }
