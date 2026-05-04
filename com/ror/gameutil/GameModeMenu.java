@@ -1,5 +1,6 @@
+package com.ror.gameutil;
+
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
 import com.ror.engine.SoundManager;
@@ -59,9 +60,8 @@ public class GameModeMenu extends JFrame implements ActionListener {
                 g.drawImage(backgrounds[currentBg], 0, 0,
                         getWidth(), getHeight(), this);
 
-                Graphics2D g2d = (Graphics2D) g;
-                g2d.setColor(new Color(0, 0, 0, 140));
-                g2d.fillRect(0, 0, getWidth(), getHeight());
+                g.setColor(new Color(0, 0, 0, 140));
+                g.fillRect(0, 0, getWidth(), getHeight());
             }
         };
 
@@ -81,12 +81,10 @@ public class GameModeMenu extends JFrame implements ActionListener {
         arcade = new JButton("ARCADE MODE");
         backButton = new JButton("BACK");
 
-        Color actionColor = new Color(220, 20, 60);
-
-        styleButton(pvp, actionColor);
-        styleButton(ai, actionColor);
-        styleButton(arcade, actionColor);
-        styleButton(backButton, new Color(70, 70, 80));
+        styleButton(pvp, new Color(220, 20, 60));
+        styleButton(ai, new Color(255, 140, 0));
+        styleButton(arcade, new Color(50, 205, 50));
+        styleButton(backButton, new Color(80, 80, 80));
 
         pvp.addActionListener(this);
         ai.addActionListener(this);
@@ -110,23 +108,78 @@ public class GameModeMenu extends JFrame implements ActionListener {
         mainPanel.add(menuPanel);
     }
 
-    private void styleButton(JButton btn, Color bgColor) {
+    private void styleButton(JButton btn, Color baseColor) {
+
         btn.setFont(new Font("Monospaced", Font.BOLD, 20));
-        btn.setBackground(bgColor);
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        Dimension size = new Dimension(350, 50);
+        Dimension size = new Dimension(360, 58);
         btn.setPreferredSize(size);
         btn.setMaximumSize(size);
-        btn.setMinimumSize(size);
 
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(bgColor.brighter(), 2),
-                new EmptyBorder(10, 20, 10, 20)
-        ));
+        btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+
+            @Override
+            public void paint(Graphics g, JComponent c) {
+
+                Graphics2D g2 = (Graphics2D) g.create();
+
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+                AbstractButton b = (AbstractButton) c;
+                ButtonModel model = b.getModel();
+
+                int w = c.getWidth();
+                int h = c.getHeight();
+
+                Color bg = baseColor.darker().darker();
+                Color glow = baseColor;
+
+                if (model.isRollover()) {
+                    bg = baseColor;
+                    glow = baseColor.brighter();
+                }
+
+                if (model.isPressed()) {
+                    bg = baseColor.darker();
+                }
+
+                g2.setColor(new Color(0, 0, 0, 120));
+                g2.fillRoundRect(3, 4, w - 6, h - 6, 25, 25);
+
+                g2.setColor(bg);
+                g2.fillRoundRect(0, 0, w - 6, h - 6, 25, 25);
+
+                g2.setColor(glow);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawRoundRect(0, 0, w - 6, h - 6, 25, 25);
+
+                g2.setFont(btn.getFont());
+                FontMetrics fm = g2.getFontMetrics();
+
+                String text = b.getText();
+
+                int x = (w - fm.stringWidth(text)) / 2 - 3;
+                int y = (h + fm.getAscent()) / 2 - 5;
+
+                g2.setColor(new Color(0, 0, 0, 160));
+                g2.drawString(text, x + 1, y + 1);
+
+                g2.setColor(Color.WHITE);
+                g2.drawString(text, x, y);
+
+                g2.dispose();
+            }
+        });
     }
 
     @Override

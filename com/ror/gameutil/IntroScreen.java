@@ -1,3 +1,5 @@
+package com.ror.gameutil;
+
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -7,6 +9,7 @@ public class IntroScreen extends JFrame {
 
     private JPanel mainPanel;
     private JButton startButton;
+    private JButton aboutButton;
     private SoundManager sound;
 
     public IntroScreen() {
@@ -65,34 +68,113 @@ public class IntroScreen extends JFrame {
         setContentPane(mainPanel);
 
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(new EmptyBorder(100, 50, 100, 50));
+        mainPanel.setBorder(new EmptyBorder(50, 50, 50, 50));
 
         TitleText title = new TitleText();
         title.setPreferredSize(new Dimension(800, 200));
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        aboutButton = new JButton("ABOUT US");
+        aboutButton.setFont(new Font("Monospaced", Font.BOLD, 18));
+        aboutButton.setForeground(Color.YELLOW);
+        aboutButton.setFocusPainted(false);
+        aboutButton.setBorderPainted(false);
+        aboutButton.setContentAreaFilled(false);
+        aboutButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        aboutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        aboutButton.addActionListener(e -> new AboutWindow());
+
         startButton = new JButton("START");
-        startButton.setFont(new Font("Arial", Font.BOLD, 24));
-        startButton.setBackground(new Color(220, 20, 60));
+
+        startButton.setFont(new Font("Monospaced", Font.BOLD, 26));
         startButton.setForeground(Color.WHITE);
         startButton.setFocusPainted(false);
+        startButton.setBorderPainted(false);
+        startButton.setContentAreaFilled(false);
         startButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        startButton.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(255, 100, 100), 2),
-                new EmptyBorder(15, 40, 15, 40)
-        ));
+        startButton.setPreferredSize(new Dimension(280, 65));
+        startButton.setMaximumSize(new Dimension(280, 65));
+
+        startButton.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+            @Override
+            public void paint(Graphics g, JComponent c) {
+
+                Graphics2D g2 = (Graphics2D) g.create();
+
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                        RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+                AbstractButton b = (AbstractButton) c;
+                ButtonModel model = b.getModel();
+
+                int w = c.getWidth();
+                int h = c.getHeight();
+
+                Color base = new Color(220, 20, 60);
+
+                Color bg = base.darker().darker();
+                Color glow = base;
+
+                if (model.isRollover()) {
+                    bg = base;
+                    glow = base.brighter();
+                }
+
+                if (model.isPressed()) {
+                    bg = base.darker();
+                }
+
+                g2.setColor(new Color(0, 0, 0, 130));
+                g2.fillRoundRect(4, 5, w - 8, h - 8, 30, 30);
+
+                g2.setColor(bg);
+                g2.fillRoundRect(0, 0, w - 8, h - 8, 30, 30);
+
+                g2.setColor(glow);
+                g2.setStroke(new BasicStroke(2.5f));
+                g2.drawRoundRect(0, 0, w - 8, h - 8, 30, 30);
+
+                g2.setFont(b.getFont());
+                FontMetrics fm = g2.getFontMetrics();
+
+                String text = b.getText();
+
+                int x = (w - fm.stringWidth(text)) / 2 - 2;
+                int y = (h + fm.getAscent()) / 2 - 5;
+
+                g2.setColor(new Color(0, 0, 0, 160));
+                g2.drawString(text, x + 2, y + 2);
+
+                g2.setColor(Color.WHITE);
+                g2.drawString(text, x, y);
+
+                g2.dispose();
+            }
+        });
 
         startButton.addActionListener(e -> {
             new HappyMealGame(sound).setVisible(true);
             dispose();
         });
 
-        mainPanel.add(Box.createVerticalGlue());
+        mainPanel.add(Box.createVerticalStrut(20));
+
+        mainPanel.add(aboutButton);
+
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 30)));
+
         mainPanel.add(title);
+
         mainPanel.add(Box.createRigidArea(new Dimension(0, 40)));
+
         mainPanel.add(startButton);
+
         mainPanel.add(Box.createVerticalGlue());
     }
 

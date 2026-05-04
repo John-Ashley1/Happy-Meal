@@ -1,3 +1,5 @@
+package com.ror.gameutil;
+
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -9,12 +11,14 @@ public class HappyMealGame extends JFrame implements ActionListener {
     private JPanel mainPanel;
     private JTextField nameField, ageField;
     private JButton confirmButton;
+    private JButton backButton;
 
     private Image[] backgrounds;
     private int currentBg = 0;
 
     private SoundManager sound;
 
+    // ================= CONSTRUCTOR =================
     public HappyMealGame() {
 
         sound = new SoundManager();
@@ -29,6 +33,7 @@ public class HappyMealGame extends JFrame implements ActionListener {
         initUI();
     }
 
+    // ================= UI =================
     private void initUI() {
 
         setTitle("Player Registration");
@@ -74,11 +79,13 @@ public class HappyMealGame extends JFrame implements ActionListener {
         Color arcadeGold = new Color(255, 215, 0);
         Color terminalGreen = new Color(50, 255, 50);
 
+        // ================= TITLE =================
         JLabel title = new JLabel("Welcome to the Happy Meal Tournament");
         title.setFont(titleFont);
         title.setForeground(arcadeGold);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        // ================= NAME =================
         JLabel nameLabel = new JLabel("ENTER NAME:");
         nameLabel.setFont(labelFont);
         nameLabel.setForeground(Color.WHITE);
@@ -87,6 +94,7 @@ public class HappyMealGame extends JFrame implements ActionListener {
         nameField = new JTextField(15);
         styleField(nameField, inputFont, arcadeGold, terminalGreen);
 
+        // ================= AGE =================
         JLabel ageLabel = new JLabel("ENTER AGE:");
         ageLabel.setFont(labelFont);
         ageLabel.setForeground(Color.WHITE);
@@ -95,36 +103,48 @@ public class HappyMealGame extends JFrame implements ActionListener {
         ageField = new JTextField(15);
         styleField(ageField, inputFont, arcadeGold, terminalGreen);
 
+        // ================= CONFIRM BUTTON =================
         confirmButton = new JButton("CONFIRM");
-        confirmButton.setFont(new Font("Monospaced", Font.BOLD, 20));
-        confirmButton.setBackground(new Color(220, 20, 60));
-        confirmButton.setForeground(Color.WHITE);
-        confirmButton.setFocusPainted(false);
-        confirmButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        confirmButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        confirmButton.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(255, 100, 100), 2),
-                new EmptyBorder(12, 30, 12, 30)
-        ));
-
+        styleButton(confirmButton, new Color(220, 20, 60));
         confirmButton.addActionListener(this);
 
+        // ================= BACK BUTTON =================
+        backButton = new JButton("BACK");
+        styleButton(backButton, new Color(30, 144, 255));
+
+        backButton.addActionListener(e -> {
+
+            // optional: stop music before going back
+            // if (sound != null) sound.stop();
+
+            new IntroScreen(sound).setVisible(true);
+            dispose();
+        });
+
+        // ================= ADD UI =================
         formPanel.add(title);
         formPanel.add(Box.createRigidArea(new Dimension(0, 40)));
+
         formPanel.add(nameLabel);
         formPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         formPanel.add(nameField);
+
         formPanel.add(Box.createRigidArea(new Dimension(0, 30)));
+
         formPanel.add(ageLabel);
         formPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         formPanel.add(ageField);
+
         formPanel.add(Box.createRigidArea(new Dimension(0, 50)));
         formPanel.add(confirmButton);
+
+        formPanel.add(Box.createRigidArea(new Dimension(0, 20)));
+        formPanel.add(backButton);
 
         mainPanel.add(formPanel);
     }
 
+    // ================= BACKGROUND =================
     private void loadBackgrounds() {
         backgrounds = new Image[]{
                 new ImageIcon(getClass().getResource("/images/BG/bg_4.png")).getImage(),
@@ -135,6 +155,7 @@ public class HappyMealGame extends JFrame implements ActionListener {
         };
     }
 
+    // ================= FIELD STYLE =================
     private void styleField(JTextField field, Font font, Color borderColor, Color textColor) {
         field.setFont(font);
         field.setBackground(new Color(10, 10, 15));
@@ -149,6 +170,77 @@ public class HappyMealGame extends JFrame implements ActionListener {
         field.setAlignmentX(Component.CENTER_ALIGNMENT);
     }
 
+    // ================= BUTTON STYLE =================
+    private void styleButton(JButton btn, Color base) {
+
+        btn.setFont(new Font("Monospaced", Font.BOLD, 20));
+        btn.setForeground(Color.WHITE);
+        btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        btn.setPreferredSize(new Dimension(260, 55));
+        btn.setMaximumSize(new Dimension(260, 55));
+
+        btn.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+
+            @Override
+            public void paint(Graphics g, JComponent c) {
+
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+
+                AbstractButton b = (AbstractButton) c;
+                ButtonModel model = b.getModel();
+
+                int w = c.getWidth();
+                int h = c.getHeight();
+
+                Color bg = base.darker().darker();
+                Color glow = base;
+
+                if (model.isRollover()) {
+                    bg = base;
+                    glow = base.brighter();
+                }
+
+                if (model.isPressed()) {
+                    bg = base.darker();
+                }
+
+                g2.setColor(new Color(0, 0, 0, 120));
+                g2.fillRoundRect(3, 4, w - 6, h - 6, 25, 25);
+
+                g2.setColor(bg);
+                g2.fillRoundRect(0, 0, w - 6, h - 6, 25, 25);
+
+                g2.setColor(glow);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawRoundRect(0, 0, w - 6, h - 6, 25, 25);
+
+                g2.setFont(b.getFont());
+                FontMetrics fm = g2.getFontMetrics();
+
+                String text = b.getText();
+
+                int x = (w - fm.stringWidth(text)) / 2 - 2;
+                int y = (h + fm.getAscent()) / 2 - 4;
+
+                g2.setColor(new Color(0, 0, 0, 160));
+                g2.drawString(text, x + 1, y + 1);
+
+                g2.setColor(Color.WHITE);
+                g2.drawString(text, x, y);
+
+                g2.dispose();
+            }
+        });
+    }
+
+    // ================= CONFIRM =================
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -156,8 +248,7 @@ public class HappyMealGame extends JFrame implements ActionListener {
         String age = ageField.getText().trim();
 
         if (name.isEmpty() || age.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Please enter both Name and Age.");
+            JOptionPane.showMessageDialog(this, "Please enter both Name and Age.");
             return;
         }
 
@@ -165,19 +256,17 @@ public class HappyMealGame extends JFrame implements ActionListener {
             int ageNumber = Integer.parseInt(age);
             if (ageNumber <= 0) throw new NumberFormatException();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this,
-                    "Enter a valid age.");
+            JOptionPane.showMessageDialog(this, "Enter a valid age.");
             return;
         }
 
-        JOptionPane.showMessageDialog(this,
-                "Welcome " + name + "!");
+        JOptionPane.showMessageDialog(this, "Welcome " + name + "!");
 
         new GameModeMenu(name, sound).setVisible(true);
-
         dispose();
     }
 
+    // ================= MAIN =================
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new HappyMealGame().setVisible(true));
     }
