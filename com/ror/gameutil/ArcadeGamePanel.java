@@ -1,5 +1,8 @@
 package com.ror.gameutil;
 
+import com.ror.gamemodel.Entity;
+import com.ror.gamemodel.Player;
+
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
@@ -13,22 +16,25 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
     private Thread gameThread;
     private final int FPS = 60;
-    private boolean running = false;
+    private volatile boolean running = false;
 
     // --- TILEMAP VARIABLES ---
     private BufferedImage floorTile;
-    private BufferedImage tlTop, tmTop, trTop;
-    private BufferedImage tlFace, tmFace, trFace;
+    private BufferedImage tlTop, tmTop, trTop, trbTop, tlbTop, tmbTop;
     private BufferedImage leftWall, rightWall;
+    private BufferedImage blWall, bmWall, brWall;
+    private BufferedImage tdlWall,tdmWall, tdrWall, bdrWall, bdlWall, bdmWall;
+
     private final int TILE_SIZE = 16;
 
-    // --- EXPANDED ROOM BLUEPRINT (17x13) ---
-    // 0=Floor, 1=TopLeft(Top), 2=TopMid(Top), 3=TopRight(Top)
-    // 4=TopLeft(Face), 5=TopMid(Face), 6=TopRight(Face)
+    // --- PERFECT 17x13 DUNGEON BOX ---
+    // 0=Floor, 1=TopLeft, 2=TopMid, 3=TopRightBottom, 4=TopLeftBottom //trb = 4 tlb = 5
     // 7=LeftWall, 8=RightWall
+    // 9=BotLeft, 10=BotMid, 11=BotRight
+    //
     private int[][] roomMap = {
-            {1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3}, // Row 0
-            {4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6}, // Row 1
+            {1, 2, 2, 2, 2, 2, 2, 12, 13, 14, 2, 2, 2, 2, 2, 2, 3}, // Row 0: Top Wall
+            {4, 6, 6, 6, 6, 6, 6, 15, 16, 17, 6, 6, 6, 6, 6, 6, 5}, // Row 1
             {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 2
             {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 3
             {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 4
@@ -38,76 +44,76 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
             {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 8
             {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 9
             {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 10
-            {1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3}, // Row 11: Bottom Wall Top
-            {4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6}  // Row 12: Bottom Wall Face
+            {7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8}, // Row 11
+            {9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11}  // Row 12: Bottom Wall
     };
 
-    // --- SPRITE ARRAYS ---
-    private BufferedImage[] idleFrames;
-    private BufferedImage[] walkFrames;
-    private BufferedImage[] attackFrames;
 
-    private final int STATE_IDLE = 0;
-    private final int STATE_WALK = 1;
-    private final int STATE_ATTACK = 2;
-    private int currentState = STATE_IDLE;
 
-    private int currentFrame = 0;
-    private int animationTimer = 0;
-    private int animationSpeed = 6;
-
-    private int playerX = 50;
-    private int playerY = 50;
-    private int playerSpeed = 2;
-    private int facingDirection = 1;
+    private Player player;
 
     private boolean upPressed, downPressed, leftPressed, rightPressed, spacePressed;
 
-    public ArcadeGamePanel() {
-        setPreferredSize(new Dimension(800, 600));
+    // Notice it now accepts 'Entity selectedHero' inside the parentheses!
+    public ArcadeGamePanel(Entity selectedHero) {
+        setPreferredSize(new Dimension(816, 624));
         setBackground(Color.BLACK);
         setDoubleBuffered(true);
         addKeyListener(this);
         setFocusable(true);
 
         loadSprites();
+
+        // Check which hero they selected and assign the correct animation folder
+        String animationFolder = "soldier"; // Default fallback
+
+        if (selectedHero != null && selectedHero.getName().contains("Mark")) {
+            animationFolder = "soldier";
+        }
+
+        player = new Player(animationFolder, TILE_SIZE);
     }
+
     private void loadSprites() {
         try {
             // 1. Load Floor Tile
             BufferedImage floorAtlas = ImageIO.read(new File("images/map/atlas_floor-16x16.png"));
             floorTile = floorAtlas.getSubimage(0, 0, 16, 16);
 
-            // 2. Load the High Atlas (MATH FULLY FIXED HERE)
-            BufferedImage wallHighAtlas = ImageIO.read(new File("images/map/atlas_walls_high-16x32.png"));
-            tlTop = wallHighAtlas.getSubimage(16, 0, 16, 16);  // Top Left Corner Wall -- NEEDS TO BE FIXED --
-            tmTop = wallHighAtlas.getSubimage(16, 64, 16, 32);  // Supposed to be Top Middle Wall -- NEEDS TO BE FIXED --
-            trTop = wallHighAtlas.getSubimage(48, 0, 16, 16);  // Top Right Corner Wall -- NEEDS TO BE FIXED --
+            // 2. Load the Atlas (SHIFTED TO X=64 FOR THE INTERIOR ROOM TILES)
+            BufferedImage wallAtlas = ImageIO.read(new File("images/map/atlas_walls_low-16x16-Sheet.png"));
+            System.out.println("Wall atlas size: " + wallAtlas.getWidth() + "x" + wallAtlas.getHeight());
 
-            tlFace = wallHighAtlas.getSubimage(16, 16, 16, 16);  // Face A.K.A. BOUNDERY/BORDER for Top Left Wall -- NEEDS TO BE FIXED --
-            tmFace = wallHighAtlas.getSubimage(16, 64, 16, 32); // Face A.K.A. BOUNDERY/BORDER for Top Middle Wall -- NEEDS TO BE FIXED --
-            trFace = wallHighAtlas.getSubimage(48, 16, 16, 16); // Face A.K.A. BOUNDERY/BORDER for Top Right Wall -- NEEDS TO BE FIXED --
+            // Top Row (Y = 0)
+            tlTop = wallAtlas.getSubimage(16, 0, 16, 16);
+            tmTop = wallAtlas.getSubimage(32, 48, 16, 16);
+            trTop = wallAtlas.getSubimage(48, 0, 16, 16);
 
-            // 3. Load the Low Atlas for Sides (Y AXIS FIXED TO 0)
-            BufferedImage wallLowAtlas = ImageIO.read(new File("images/map/atlas_walls_low-16x16.png"));
-            leftWall = wallLowAtlas.getSubimage(16, 0, 16, 16); // -- NEEDS TO BE FIXED --
-            rightWall = wallLowAtlas.getSubimage(48, 0, 16, 16); // -- NEEDS TO BE FIXED --
+            // Top Bottom Row (Y = 16, 32)
+            tlbTop = wallAtlas.getSubimage(144, 16, 16, 16); // left
+            trbTop = wallAtlas.getSubimage(160, 16, 16, 16); // right
+            tmbTop = wallAtlas.getSubimage(160, 32, 16, 16); // mid
 
-            // 4. Load Player Animations
-            BufferedImage idleSheet = ImageIO.read(new File("images/Soldier-Idle.png"));
-            int idleW = idleSheet.getWidth() / 6;
-            idleFrames = new BufferedImage[6];
-            for (int i = 0; i < 6; i++) idleFrames[i] = idleSheet.getSubimage(i * idleW, 0, idleW, idleSheet.getHeight());
+            // Side Walls (Y = 16)
+            leftWall = wallAtlas.getSubimage(0, 16, 16, 16);
+            rightWall = wallAtlas.getSubimage(0, 0, 16, 16);
 
-            BufferedImage walkSheet = ImageIO.read(new File("images/Soldier-Walk.png"));
-            int walkW = walkSheet.getWidth() / 8;
-            walkFrames = new BufferedImage[8];
-            for (int i = 0; i < 8; i++) walkFrames[i] = walkSheet.getSubimage(i * walkW, 0, walkW, walkSheet.getHeight());
+            // Bottom Row (Y = 32)
+            blWall = wallAtlas.getSubimage(16, 32, 16, 16);
+            bmWall = wallAtlas.getSubimage(32, 48, 16, 16);
+            brWall = wallAtlas.getSubimage(48, 32, 16, 16);
 
-            BufferedImage attackSheet = ImageIO.read(new File("images/Soldier-Attack01.png"));
-            int attackW = attackSheet.getWidth() / 6;
-            attackFrames = new BufferedImage[6];
-            for (int i = 0; i < 6; i++) attackFrames[i] = attackSheet.getSubimage(i * attackW, 0, attackW, attackSheet.getHeight());
+            BufferedImage doorWall = ImageIO.read(new File("images/map/atlas_walls_high-16x32-Sheet.png"));
+            tdlWall = doorWall.getSubimage(272, 96, 16, 16);
+            tdmWall = doorWall.getSubimage(288, 96, 16, 16);
+            tdrWall = doorWall.getSubimage(304, 96, 16, 16);
+
+            bdrWall = doorWall.getSubimage(304, 112, 16, 16);
+            bdlWall = doorWall.getSubimage(272, 112, 16, 16);
+            bdmWall = doorWall.getSubimage(288, 112, 16, 16);
+
+
+
 
         } catch (IOException e) {
             System.out.println("DEBUG: Could not load images! Check your file paths.");
@@ -119,6 +125,13 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
         gameThread = new Thread(this);
         gameThread.start();
         running = true;
+    }
+
+    public void stopGameThread() {
+        running = false;
+        if (gameThread != null) {
+            gameThread.interrupt();
+        }
     }
 
     @Override
@@ -142,68 +155,31 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private void update() {
-        int previousState = currentState;
+        // =========================
+        // ✅ DYNAMIC WORLD BOUNDS FIX
+        // =========================
+        int cols = roomMap[0].length;
+        int rows = roomMap.length;
 
-        if (spacePressed && currentState != STATE_ATTACK) {
-            currentState = STATE_ATTACK;
-        }
+        int worldWidth = cols * TILE_SIZE;
+        int worldHeight = rows * TILE_SIZE;
 
-        if (currentState != STATE_ATTACK) {
-            boolean isMoving = false;
+        // 2-tile wall thickness
+        int leftWallBounds = TILE_SIZE;
+        int topWallBounds = 2 * TILE_SIZE;
 
-            int nextX = playerX;
-            int nextY = playerY;
+        // Collision box matches sprite size
 
-            if (upPressed) { nextY -= playerSpeed; isMoving = true; }
-            if (downPressed) { nextY += playerSpeed; isMoving = true; }
-            if (leftPressed) { nextX -= playerSpeed; isMoving = true; facingDirection = -1; }
-            if (rightPressed) { nextX += playerSpeed; isMoving = true; facingDirection = 1; }
+        int rightWallBounds = worldWidth - TILE_SIZE - player.getPlayerWidth();
+        int bottomWallBounds = worldHeight - TILE_SIZE - player.getPlayerHeight();
 
-            int leftWallBounds = TILE_SIZE;
-            int rightWallBounds = (16 * TILE_SIZE) - 12;
-            int topWallBounds = (2 * TILE_SIZE);
-            int bottomWallBounds = (11 * TILE_SIZE) - 12;
+        player.update(upPressed, downPressed, leftPressed, rightPressed, spacePressed);
+        player.clampPosition(leftWallBounds, rightWallBounds, topWallBounds, bottomWallBounds);
 
-            if (nextX >= leftWallBounds && nextX <= rightWallBounds) {
-                playerX = nextX;
-            }
-            if (nextY >= topWallBounds && nextY <= bottomWallBounds) {
-                playerY = nextY;
-            }
-
-            if (isMoving) currentState = STATE_WALK;
-            else currentState = STATE_IDLE;
-        }
-
-        if (currentState != previousState) {
-            currentFrame = 0;
-            animationTimer = 0;
-        }
-
-        BufferedImage[] activeArray = getActiveFrameArray();
-
-        if (activeArray == null) return; // <-- NEW: Stops the crash if images are missing!
-
-        animationTimer++;
-        if (animationTimer >= animationSpeed) {
-            currentFrame++;
-            animationTimer = 0;
-
-            if (currentFrame >= activeArray.length) {
-                if (currentState == STATE_ATTACK) {
-                    currentState = STATE_IDLE;
-                    spacePressed = false;
-                }
-                currentFrame = 0;
-            }
-        }
+        if (player.isAttackFinished()) spacePressed = false;
     }
 
-    private BufferedImage[] getActiveFrameArray() {
-        if (currentState == STATE_WALK) return walkFrames;
-        if (currentState == STATE_ATTACK) return attackFrames;
-        return idleFrames;
-    }
+
 
     @Override
     protected void paintComponent(Graphics g) {
@@ -212,42 +188,51 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         g2d.scale(3.0, 3.0);
 
-        // --- RENDER THE TILEMAP ---
+        // Fill the entire background with the floor tile first,
+        // to guarantee NO black gaps anywhere behind the walls!
+        if (floorTile != null) {
+            for (int row = 0; row < roomMap.length; row++) {
+                for (int col = 0; col < roomMap[row].length; col++) {
+                    g2d.drawImage(floorTile, col * TILE_SIZE, row * TILE_SIZE, null);
+                }
+            }
+        }
+
+        // --- RENDER THE WALLS ---
         for (int row = 0; row < roomMap.length; row++) {
             for (int col = 0; col < roomMap[row].length; col++) {
                 int tileID = roomMap[row][col];
                 int xPos = col * TILE_SIZE;
                 int yPos = row * TILE_SIZE;
 
-                // Draw Floor behind everything first to prevent transparent gaps!
-                if (row >= 2 && floorTile != null) {
-                    g2d.drawImage(floorTile, xPos, yPos, null);
-                }
 
                 if (tileID == 1 && tlTop != null) g2d.drawImage(tlTop, xPos, yPos, null);
                 else if (tileID == 2 && tmTop != null) g2d.drawImage(tmTop, xPos, yPos, null);
                 else if (tileID == 3 && trTop != null) g2d.drawImage(trTop, xPos, yPos, null);
-                else if (tileID == 4 && tlFace != null) g2d.drawImage(tlFace, xPos, yPos, null);
-                else if (tileID == 5 && tmFace != null) g2d.drawImage(tmFace, xPos, yPos, null);
-                else if (tileID == 6 && trFace != null) g2d.drawImage(trFace, xPos, yPos, null);
+
+                else if (tileID == 4 && tlbTop != null) g2d.drawImage(tlbTop, xPos, yPos, null);
+                else if (tileID == 5 && trbTop != null) g2d.drawImage(trbTop, xPos, yPos, null);
+                else if (tileID == 6 && tmbTop != null) g2d.drawImage(tmbTop, xPos, yPos, null);
+
                 else if (tileID == 7 && leftWall != null) g2d.drawImage(leftWall, xPos, yPos, null);
                 else if (tileID == 8 && rightWall != null) g2d.drawImage(rightWall, xPos, yPos, null);
+
+                else if (tileID == 9 && blWall != null) g2d.drawImage(blWall, xPos, yPos, null);
+                else if (tileID == 10 && bmWall != null) g2d.drawImage(bmWall, xPos, yPos, null);
+                else if (tileID == 11 && brWall != null) g2d.drawImage(brWall, xPos, yPos, null);
+
+                else if (tileID == 12 && tdlWall != null) g2d.drawImage(tdlWall, xPos, yPos, null);
+                else if (tileID == 13 && tdmWall != null) g2d.drawImage(tdmWall, xPos, yPos, null);
+                else if (tileID == 14 && tdrWall != null) g2d.drawImage(tdrWall, xPos, yPos, null);
+
+                else if (tileID == 15 && bdlWall != null) g2d.drawImage(bdlWall, xPos, yPos, null);
+                else if (tileID == 16 && bdmWall != null) g2d.drawImage(bdmWall, xPos, yPos, null);
+                else if (tileID == 17 && bdrWall != null) g2d.drawImage(bdrWall, xPos, yPos, null);
             }
         }
 
         // Render the Soldier
-        BufferedImage[] activeArray = getActiveFrameArray();
-        if (activeArray != null && currentFrame < activeArray.length) {
-            BufferedImage currentImg = activeArray[currentFrame];
-
-            if (facingDirection == -1) {
-                g2d.drawImage(currentImg, playerX + currentImg.getWidth(), playerY, -currentImg.getWidth(), currentImg.getHeight(), null);
-            } else {
-                g2d.drawImage(currentImg, playerX, playerY, null);
-            }
-        }
-
-        g2d.dispose();
+        player.render(g2d, TILE_SIZE);
     }
 
     @Override
@@ -258,6 +243,39 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
         if (code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) leftPressed = true;
         if (code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) rightPressed = true;
         if (code == KeyEvent.VK_SPACE) spacePressed = true;
+
+        if (code == KeyEvent.VK_ESCAPE) {
+
+            // 1. Pause the game engine
+            running = false;
+
+            // 2. Find the window this panel is living inside
+            JFrame parentWindow = (JFrame) SwingUtilities.getWindowAncestor(this);
+
+            // 3. Summon the reusable Main Menu!
+            MainMenu pauseMenu = new MainMenu(
+                    parentWindow,
+
+                    // ACTION A: What happens when they click Resume?
+                    () -> {
+                        running = true; // Unpause logic
+                        startGameThread(); // Restart the loop
+                    },
+
+                    // ACTION B: What happens when they click Quit?
+                    () -> {
+                        // Open the Intro Screen
+                        new IntroScreen().setVisible(true);
+                        // Destroy the current game window
+                        parentWindow.dispose();
+                    }
+            );
+
+            // 4. Show the menu (This freezes the screen until they click a button)
+            pauseMenu.setVisible(true);
+        }
+
+
     }
 
     @Override

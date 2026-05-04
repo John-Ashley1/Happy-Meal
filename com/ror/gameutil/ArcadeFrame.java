@@ -8,13 +8,13 @@ import javax.swing.*;
 
 public class ArcadeFrame extends JFrame {
 
-    public ArcadeFrame(Entity player, Entity enemy) {
+    public ArcadeFrame(Entity player1, Entity player2) {
         setTitle("Happy Meal Tournament - ARCADE SURVIVAL");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
 
         // Add our custom game engine panel to the window
-        ArcadeGamePanel gamePanel = new ArcadeGamePanel();
+        ArcadeGamePanel gamePanel = new ArcadeGamePanel(player1);
         add(gamePanel);
 
         pack(); // Automatically sizes the window to fit the 800x600 panel perfectly

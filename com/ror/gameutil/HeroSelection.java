@@ -1,6 +1,7 @@
+package com.ror.gameutil;
+
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Playable.*;
-import com.ror.gameutil.GuiBattleArena;
 import com.ror.engine.SoundManager;
 
 import javax.swing.*;

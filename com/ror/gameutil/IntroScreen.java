@@ -1,3 +1,5 @@
+package com.ror.gameutil;
+
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
