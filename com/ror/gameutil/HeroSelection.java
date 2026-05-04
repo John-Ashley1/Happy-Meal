@@ -90,14 +90,14 @@ public class HeroSelection extends JFrame implements ActionListener {
         JPanel grid = new JPanel(new GridLayout(2, 4, 10, 10));
         grid.setOpaque(false);
 
-        mark = createHeroButton("images/characters/mark.jpg");
-        ted = createHeroButton("images/characters/ted.jpg");
-        den = createHeroButton("images/characters/den.jpg");
-        ashley = createHeroButton("images/characters/ashley.jpg");
-        vince = createHeroButton("images/characters/vince.jpg");
-        zack = createHeroButton("images/characters/zack.jpg");
-        clent = createHeroButton("images/characters/clent.jpg");
-        trone = createHeroButton("images/characters/trone.jpg");
+        mark = createHeroButton("images/characters/Happy_Mark.png");
+        ted = createHeroButton("images/characters/Happy_Ted.png");
+        den = createHeroButton("images/characters/Happy_Den.png");
+        ashley = createHeroButton("images/characters/Happy_Ashley.png");
+        vince = createHeroButton("images/characters/Happy_Vince.png");
+        zack = createHeroButton("images/characters/Happy_Zack.png");
+        clent = createHeroButton("images/characters/Happy_Clent.png");
+        trone = createHeroButton("images/characters/Happy_Throne.png");
 
         grid.add(mark);
         grid.add(ted);

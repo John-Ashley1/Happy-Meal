@@ -23,7 +23,7 @@ public class GameModeMenu extends JFrame implements ActionListener {
     }
 
     public GameModeMenu(String name, SoundManager sound) {
-        this.playerName = name;
+        this.playerName =  name;
         this.sound = sound;
         initUI();
     }
