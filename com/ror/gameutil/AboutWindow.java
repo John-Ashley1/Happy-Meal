@@ -6,14 +6,37 @@ import java.awt.*;
 
 public class AboutWindow extends JFrame {
 
+    private Image background;
+
     public AboutWindow() {
+
+        background = new ImageIcon(getClass().getResource("/images/BG/aboutbg.png")).getImage();
+
         setTitle("About Happy Meal");
         setSize(750, 650);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout(10, 10));
-        getContentPane().setBackground(Color.BLACK);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        ((JPanel)getContentPane()).setBorder(new EmptyBorder(10,10,10,10));
+        JPanel mainPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+
+                if (background != null) {
+                    g.drawImage(background, 0, 0, getWidth(), getHeight(), this);
+                }
+
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setColor(new Color(0, 0, 0, 160));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+
+        mainPanel.setLayout(new BorderLayout(10, 10));
+        mainPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        setContentPane(mainPanel);
 
         buildUI();
 
@@ -43,20 +66,22 @@ public class AboutWindow extends JFrame {
         );
 
         description.setEditable(false);
-        description.setBackground(Color.BLACK);
+        description.setOpaque(false);
         description.setForeground(Color.WHITE);
         description.setFont(new Font("Monospaced", Font.PLAIN, 14));
         description.setLineWrap(true);
         description.setWrapStyleWord(true);
-        description.setBorder(new EmptyBorder(10,10,10,10));
+        description.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         JScrollPane scroll = new JScrollPane(description);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
         scroll.setBorder(new LineBorder(Color.WHITE, 2));
 
         add(scroll, BorderLayout.CENTER);
 
         JPanel devPanel = new JPanel(new GridLayout(2, 3, 10, 10));
-        devPanel.setBackground(Color.BLACK);
+        devPanel.setOpaque(false);
         devPanel.setBorder(BorderFactory.createTitledBorder(
                 new LineBorder(Color.WHITE, 2),
                 "DEVELOPERS TEAM",
@@ -76,13 +101,13 @@ public class AboutWindow extends JFrame {
                 "/images/characters/ted.jpg",
                 "/images/characters/den.jpg",
                 "/images/characters/ashley.jpg",
-                "/images/characters/vince.jpg",
+                "/images/characters/vince.jpg"
         };
 
         for (int i = 0; i < images.length; i++) {
 
             JPanel card = new JPanel(new BorderLayout());
-            card.setBackground(new Color(20, 20, 20));
+            card.setOpaque(false);
             card.setBorder(new LineBorder(Color.WHITE, 1));
 
             ImageIcon icon;
@@ -90,7 +115,6 @@ public class AboutWindow extends JFrame {
                 icon = new ImageIcon(getClass().getResource(images[i]));
             } catch (Exception e) {
                 icon = new ImageIcon();
-                System.out.println("Image not found: " + images[i]);
             }
 
             Image img = icon.getImage().getScaledInstance(90, 90, Image.SCALE_SMOOTH);
@@ -109,41 +133,31 @@ public class AboutWindow extends JFrame {
         }
 
         JButton closeBtn = new JButton("CLOSE");
-
         closeBtn.setFocusPainted(false);
-        closeBtn.setBackground(Color.BLACK);
         closeBtn.setForeground(Color.YELLOW);
         closeBtn.setFont(new Font("Monospaced", Font.BOLD, 14));
         closeBtn.setBorder(new LineBorder(Color.YELLOW, 2));
         closeBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         closeBtn.setContentAreaFilled(false);
-        closeBtn.setOpaque(true);
+        closeBtn.setOpaque(false);
 
         closeBtn.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                closeBtn.setBackground(Color.YELLOW);
                 closeBtn.setForeground(Color.BLACK);
+                closeBtn.setBackground(Color.YELLOW);
+                closeBtn.setOpaque(true);
             }
 
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                closeBtn.setBackground(Color.BLACK);
                 closeBtn.setForeground(Color.YELLOW);
-            }
-
-            public void mousePressed(java.awt.event.MouseEvent evt) {
-                closeBtn.setBackground(Color.GRAY);
-            }
-
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
-                closeBtn.setBackground(Color.YELLOW);
-                closeBtn.setForeground(Color.BLACK);
+                closeBtn.setOpaque(false);
             }
         });
 
         closeBtn.addActionListener(e -> dispose());
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBackground(Color.BLACK);
+        bottomPanel.setOpaque(false);
         bottomPanel.add(devPanel, BorderLayout.CENTER);
         bottomPanel.add(closeBtn, BorderLayout.SOUTH);
 

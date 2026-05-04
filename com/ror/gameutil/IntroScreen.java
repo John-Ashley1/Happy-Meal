@@ -9,7 +9,6 @@ public class IntroScreen extends JFrame {
 
     private JPanel mainPanel;
     private JButton startButton;
-    private JButton aboutButton;
     private SoundManager sound;
 
     public IntroScreen() {
@@ -57,6 +56,7 @@ public class IntroScreen extends JFrame {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
+
                 g.drawImage(backgrounds[currentBg], 0, 0, getWidth(), getHeight(), this);
 
                 Graphics2D g2d = (Graphics2D) g;
@@ -66,24 +66,33 @@ public class IntroScreen extends JFrame {
         };
 
         setContentPane(mainPanel);
+        mainPanel.setLayout(new BorderLayout());
 
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(new EmptyBorder(50, 50, 50, 50));
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+        topBar.setOpaque(false);
+
+        JButton aboutTopButton = new JButton("ABOUT");
+        JButton exitButton = new JButton("EXIT");
+
+        styleTopButton(aboutTopButton, new Color(255, 200, 0));
+        styleTopButton(exitButton, new Color(180, 0, 0));
+
+        aboutTopButton.addActionListener(e -> new AboutWindow());
+        exitButton.addActionListener(e -> System.exit(0));
+
+        topBar.add(aboutTopButton);
+        topBar.add(exitButton);
+
+        mainPanel.add(topBar, BorderLayout.NORTH);
+
+        JPanel centerPanel = new JPanel();
+        centerPanel.setOpaque(false);
+        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+        centerPanel.setBorder(new EmptyBorder(50, 50, 50, 50));
 
         TitleText title = new TitleText();
         title.setPreferredSize(new Dimension(800, 200));
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        aboutButton = new JButton("ABOUT US");
-        aboutButton.setFont(new Font("Monospaced", Font.BOLD, 18));
-        aboutButton.setForeground(Color.YELLOW);
-        aboutButton.setFocusPainted(false);
-        aboutButton.setBorderPainted(false);
-        aboutButton.setContentAreaFilled(false);
-        aboutButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        aboutButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-
-        aboutButton.addActionListener(e -> new AboutWindow());
 
         startButton = new JButton("START");
 
@@ -163,28 +172,81 @@ public class IntroScreen extends JFrame {
             dispose();
         });
 
-        mainPanel.add(Box.createVerticalStrut(20));
+        centerPanel.add(Box.createVerticalStrut(20));
+        centerPanel.add(title);
+        centerPanel.add(Box.createRigidArea(new Dimension(0, 40)));
+        centerPanel.add(startButton);
+        centerPanel.add(Box.createVerticalGlue());
 
-        mainPanel.add(aboutButton);
-
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 30)));
-
-        mainPanel.add(title);
-
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 40)));
-
-        mainPanel.add(startButton);
-
-        mainPanel.add(Box.createVerticalGlue());
+        mainPanel.add(centerPanel, BorderLayout.CENTER);
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new IntroScreen().setVisible(true));
+    private void styleTopButton(JButton button, Color baseColor) {
+
+        button.setFont(new Font("Monospaced", Font.BOLD, 14));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setPreferredSize(new Dimension(110, 40));
+
+        button.setUI(new javax.swing.plaf.basic.BasicButtonUI() {
+
+            @Override
+            public void paint(Graphics g, JComponent c) {
+
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+
+                AbstractButton b = (AbstractButton) c;
+                ButtonModel model = b.getModel();
+
+                int w = c.getWidth();
+                int h = c.getHeight();
+
+                Color bg = baseColor.darker().darker();
+                Color glow = baseColor;
+
+                if (model.isRollover()) {
+                    bg = baseColor;
+                    glow = baseColor.brighter();
+                }
+
+                if (model.isPressed()) {
+                    bg = baseColor.darker();
+                }
+
+                g2.setColor(new Color(0, 0, 0, 120));
+                g2.fillRoundRect(3, 4, w - 6, h - 6, 20, 20);
+
+                g2.setColor(bg);
+                g2.fillRoundRect(0, 0, w - 6, h - 6, 20, 20);
+
+                g2.setColor(glow);
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawRoundRect(0, 0, w - 6, h - 6, 20, 20);
+
+                g2.setFont(b.getFont());
+                FontMetrics fm = g2.getFontMetrics();
+
+                String text = b.getText();
+                int x = (w - fm.stringWidth(text)) / 2 - 2;
+                int y = (h + fm.getAscent()) / 2 - 4;
+
+                g2.setColor(Color.WHITE);
+                g2.drawString(text, x, y);
+
+                g2.dispose();
+            }
+        });
     }
 
     class TitleText extends JComponent {
         @Override
         protected void paintComponent(Graphics g) {
+
             Graphics2D g2d = (Graphics2D) g;
 
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
@@ -207,5 +269,9 @@ public class IntroScreen extends JFrame {
             ));
             g2d.drawString(text, x, y);
         }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new IntroScreen().setVisible(true));
     }
 }
