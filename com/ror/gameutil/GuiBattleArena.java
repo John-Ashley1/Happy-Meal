@@ -6,8 +6,6 @@ import com.ror.gamemodel.Skill;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.*;
-import java.awt.image.BufferedImage;
 
 public class GuiBattleArena extends JFrame implements BattleView {
 
@@ -466,7 +464,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
             case "Happy Ashley": return new com.ror.gamemodel.Playable.Ashley();
             case "Happy Clent":  return new com.ror.gamemodel.Playable.Clent();
             case "Happy Den":    return new com.ror.gamemodel.Playable.Den();
-            case "Happy Throne": return new com.ror.gamemodel.Playable.Trone();
+            case "Happy Trone": return new com.ror.gamemodel.Playable.Trone();
             case "Happy Vince":  return new com.ror.gamemodel.Playable.Vince();
             case "Happy Zack":   return new com.ror.gamemodel.Playable.Zack();
             default:             return new com.ror.gamemodel.Playable.Mark();
@@ -533,7 +531,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
             case "Happy Den":    return "/images/characters/den_gif.gif";
             case "Happy Mark":   return "/images/characters/mark_gif.gif";
             case "Happy Ted":    return "/images/characters/ted_gif.gif";
-            case "Happy Throne": return "/images/characters/throne_gif.gif";
+            case "Happy Trone": return "/images/characters/trone_gif.gif";
             case "Happy Vince":  return "/images/characters/vince_gif.gif";
             case "Happy Zack":   return "/images/characters/zack_gif.gif";
 

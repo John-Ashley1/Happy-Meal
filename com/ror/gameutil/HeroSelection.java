@@ -2,7 +2,6 @@ package com.ror.gameutil;
 
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Playable.*;
-import com.ror.gameutil.GuiBattleArena;
 import com.ror.engine.SoundManager;
 
 import javax.swing.*;
@@ -97,7 +96,7 @@ public class HeroSelection extends JFrame implements ActionListener {
         vince = createHeroButton("images/characters/Happy_Vince.png");
         zack = createHeroButton("images/characters/Happy_Zack.png");
         clent = createHeroButton("images/characters/Happy_Clent.png");
-        trone = createHeroButton("images/characters/Happy_Throne.png");
+        trone = createHeroButton("images/characters/Happy_Trone.png");
 
         grid.add(mark);
         grid.add(ted);
