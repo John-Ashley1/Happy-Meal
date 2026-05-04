@@ -31,8 +31,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private static final int  IDLE_SECONDS    = 10;
     private static final int  IDLE_HP_PENALTY = 100;  // HP deducted if player idles
     private static final int  SKILL_MANA_COST = 2;    // mana cost per skill use
-    // Mana regen: only triggers when mana hits 0. Uses half-points (x2 scale) so 1.5 = 3 half-points per attack.
-    // We track fractional mana as integer half-units: 1 real mana = 2 half-units
+    
     private java.util.Map<Entity, Integer> manaHalfPoints = new java.util.HashMap<>();
 
     // Colors
@@ -73,7 +72,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         add(buildBottomBar(), BorderLayout.SOUTH);
     }
 
-    // ─── TOP BAR ────────────────────────────────────────────────────────────────
     private JPanel buildTopBar() {
         JPanel top = new JPanel(null); // absolute layout for true centering
         top.setPreferredSize(new Dimension(0, 70));
@@ -99,12 +97,10 @@ public class GuiBattleArena extends JFrame implements BattleView {
         lblRound.setBounds(0, 38, 900, 22);
         top.add(lblRound);
 
-        // Win dots removed per request
 
         return top;
     }
 
-    // ─── MAIN PANEL ─────────────────────────────────────────────────────────────
     private JPanel buildMainPanel() {
         JPanel main = new JPanel(new BorderLayout(10, 8)) {
             private Image bgImage;
@@ -232,7 +228,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         return panel;
     }
 
-    // ─── BOTTOM BAR ─────────────────────────────────────────────────────────────
     private JPanel buildBottomBar() {
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottom.setBackground(new Color(14, 14, 24));
@@ -244,7 +239,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         return bottom;
     }
 
-    // ─── HELPERS ────────────────────────────────────────────────────────────────
     private JProgressBar createBar(Color color) {
         JProgressBar bar = new JProgressBar(0, 100);
         bar.setStringPainted(true);
@@ -266,7 +260,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         return btn;
     }
 
-    // ─── LOGIC ──────────────────────────────────────────────────────────────────
     private void startIdleTimer() {
         if (idleTimer != null) idleTimer.stop();
         idleTimer = new javax.swing.Timer(IDLE_SECONDS * 1000, e -> {
@@ -341,12 +334,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         }
     }
 
-    /**
-     * Mana regen mechanic:
-     * - While mana > 0: each attack costs 2 mana (no regen).
-     * - Once mana hits 0: each attack earns +1.5 mana (tracked as half-points).
-     *   Every 2 attacks at 0 mana = +3 real mana restored.
-     */
     private void handleManaOnAttack(Entity atk) {
         if (atk.getCurrentMana() > 0) {
             // Normal: deduct cost
