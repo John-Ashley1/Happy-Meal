@@ -42,7 +42,10 @@ public class HeroSelection extends JFrame implements ActionListener {
         this.sound = null;
 
         setTitle("Happy Meal Tournament - Select Your Hero");
+
+        // --- 1. Window size stays strictly consistent ---
         setSize(800, 750);
+
         setLocationRelativeTo(null);
         setResizable(false);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -87,17 +90,18 @@ public class HeroSelection extends JFrame implements ActionListener {
         topPanel.add(instructionLabel);
         mainPanel.add(topPanel, BorderLayout.NORTH);
 
-        JPanel heroPanel = new JPanel(new GridLayout(2, 4, 15, 15));
+        // --- 2. Reduced horizontal gaps slightly to maximize portrait width ---
+        JPanel heroPanel = new JPanel(new GridLayout(2, 4, 10, 15));
         heroPanel.setOpaque(false);
 
-        mark = createHeroButton("Happy Mark", "images/characters/mark.jpg");
-        ted = createHeroButton("Happy Ted", "images/characters/ted.jpg");
-        den = createHeroButton("Happy Den", "images/characters/den.jpg");
-        ashley = createHeroButton("Happy Ashley", "images/characters/ashley.jpg");
-        vince = createHeroButton("Happy Vince", "images/characters/vince.jpg");
-        zack = createHeroButton("Happy Zack", "images/characters/zack.jpg");
-        clent = createHeroButton("Happy Clent", "images/characters/clent.jpg");
-        trone = createHeroButton("Happy Trone", "images/characters/trone.jpg");
+        mark = createHeroButton("Happy Mark", "images/characters/mark/Mark.png");
+        ted = createHeroButton("Happy Ted", "images/characters/ted/Ted.png");
+        den = createHeroButton("Happy Den", "images/characters/den/den.png");
+        ashley = createHeroButton("Happy Ashley", "images/characters/ashley/Ashley.png");
+        vince = createHeroButton("Happy Vince", "images/characters/vince/Vince.png");
+        zack = createHeroButton("Happy Zack", "images/characters/zack/Zack.png");
+        clent = createHeroButton("Happy Clent", "images/characters/clent/Clent.png");
+        trone = createHeroButton("Happy Trone", "images/characters/trone/Trone.png");
 
         JButton[] heroButtons = {mark, ted, den, ashley, vince, zack, clent, trone};
         for (JButton b : heroButtons) heroPanel.add(b);
@@ -105,6 +109,7 @@ public class HeroSelection extends JFrame implements ActionListener {
         mainPanel.add(heroPanel, BorderLayout.CENTER);
 
         backButton = new JButton("BACK TO MENU");
+        backButton.setFont(new Font("Monospaced", Font.BOLD, 14));
         backButton.addActionListener(e -> {
             new GameModeMenu("Player").setVisible(true);
             dispose();
@@ -127,11 +132,14 @@ public class HeroSelection extends JFrame implements ActionListener {
         btn.setHorizontalTextPosition(SwingConstants.CENTER);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(new LineBorder(new Color(220, 20, 60), 2));
+
+        // Keep the thinner border so it doesn't crowd the image
+        btn.setBorder(new LineBorder(new Color(220, 20, 60), 1));
 
         try {
             ImageIcon icon = new ImageIcon(imagePath);
-            Image scaled = icon.getImage().getScaledInstance(140, 140, Image.SCALE_SMOOTH);
+            // --- 3. Maximized Image Scale (170x170 perfectly fills the column width) ---
+            Image scaled = icon.getImage().getScaledInstance(170, 170, Image.SCALE_SMOOTH);
             btn.setIcon(new ImageIcon(scaled));
         } catch (Exception ex) {
             System.out.println("Image not found: " + imagePath);
@@ -195,8 +203,8 @@ public class HeroSelection extends JFrame implements ActionListener {
         new GuiBattleArena(
                 createHeroEntity(player1Hero),
                 createHeroEntity(player2Hero),
-                mode // Pass the mode from HeroSelection!
-    ).setVisible(true);
+                mode
+        ).setVisible(true);
 
         dispose();
     }

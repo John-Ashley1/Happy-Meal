@@ -29,8 +29,13 @@ public class Player {
     private boolean attackFinished = false;
     private String animationFolder;
 
-    public Player(String animationFolder, int tileSize) {
+    // --- NEW: Stores "Soldier", "Orc", etc. ---
+    private String spritePrefix;
+
+    // --- NEW: Constructor now accepts the spritePrefix ---
+    public Player(String animationFolder, String spritePrefix, int tileSize) {
         this.animationFolder = animationFolder;
+        this.spritePrefix = spritePrefix;
         playerWidth = tileSize;
         playerHeight = tileSize;
         loadSprites();
@@ -38,17 +43,18 @@ public class Player {
 
     private void loadSprites() {
         try {
-            BufferedImage idleSheet = ImageIO.read(new File("images/animation/twodeeanimation/" + animationFolder + "/Soldier-Idle.png"));
+            // Dynamically injects the prefix so it isn't hardcoded to "Soldier"
+            BufferedImage idleSheet = ImageIO.read(new File("images/animation/twodeeanimation/" + animationFolder + "/" + spritePrefix + "-Idle.png"));
             int idleW = idleSheet.getWidth() / 6;
             idleFrames = new BufferedImage[6];
             for (int i = 0; i < 6; i++) idleFrames[i] = idleSheet.getSubimage(i * idleW, 0, idleW, idleSheet.getHeight());
 
-            BufferedImage walkSheet = ImageIO.read(new File("images/animation/twodeeanimation/" + animationFolder + "/Soldier-Walk.png"));
+            BufferedImage walkSheet = ImageIO.read(new File("images/animation/twodeeanimation/" + animationFolder + "/" + spritePrefix + "-Walk.png"));
             int walkW = walkSheet.getWidth() / 8;
             walkFrames = new BufferedImage[8];
             for (int i = 0; i < 8; i++) walkFrames[i] = walkSheet.getSubimage(i * walkW, 0, walkW, walkSheet.getHeight());
 
-            BufferedImage attackSheet = ImageIO.read(new File("images/animation/twodeeanimation/" + animationFolder + "/Soldier-Attack01.png"));
+            BufferedImage attackSheet = ImageIO.read(new File("images/animation/twodeeanimation/" + animationFolder + "/" + spritePrefix + "-Attack01.png"));
             int attackW = attackSheet.getWidth() / 6;
             attackFrames = new BufferedImage[6];
             for (int i = 0; i < 6; i++) attackFrames[i] = attackSheet.getSubimage(i * attackW, 0, attackW, attackSheet.getHeight());
@@ -77,7 +83,6 @@ public class Player {
             if (left) { nextX -= playerSpeed; isMoving = true; facingDirection = -1; }
             if (right) { nextX += playerSpeed; isMoving = true; facingDirection = 1; }
 
-            // Note: Bounds clamping moved to ArcadeGamePanel for now
             playerX = nextX;
             playerY = nextY;
 
@@ -136,28 +141,10 @@ public class Player {
         }
     }
 
-    public int getCurrentState() {
-        return currentState;
-    }
-
-    public boolean isAttackFinished() {
-        return attackFinished;
-    }
-
-    // Getters for position if needed
-    public int getPlayerX() {
-        return playerX;
-    }
-
-    public int getPlayerY() {
-        return playerY;
-    }
-
-    public int getPlayerWidth() {
-        return playerWidth;
-    }
-
-    public int getPlayerHeight() {
-        return playerHeight;
-    }
+    public int getCurrentState() { return currentState; }
+    public boolean isAttackFinished() { return attackFinished; }
+    public int getPlayerX() { return playerX; }
+    public int getPlayerY() { return playerY; }
+    public int getPlayerWidth() { return playerWidth; }
+    public int getPlayerHeight() { return playerHeight; }
 }

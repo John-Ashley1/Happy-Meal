@@ -25,15 +25,10 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     private BufferedImage tlTop, tmTop, trTop, trbTop, tlbTop, tmbTop;
     private BufferedImage leftWall, rightWall;
     private BufferedImage blWall, bmWall, brWall;
-
-    // Normal Closed Door
     private BufferedImage tdlWall, tdmWall, tdrWall, bdrWall, bdlWall, bdmWall;
-
-    // Interactive Open Door Sprites
     private BufferedImage itdlWall, itdmWall, itdrWall, ibdrWall, ibdlWall, ibdmWall;
 
     private boolean isNearDoor = false;
-
     private final int TILE_SIZE = 16;
 
     private int[][] roomMap = {
@@ -53,7 +48,7 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     };
 
     private Player player;
-    private Entity currentHero; // Stored to pass to the Battle Arena!
+    private Entity currentHero;
     private boolean upPressed, downPressed, leftPressed, rightPressed, spacePressed;
 
     public ArcadeGamePanel(Entity selectedHero) {
@@ -65,19 +60,25 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         loadSprites();
 
-        // Fallback in case it's null
         if (selectedHero == null) {
             selectedHero = new Mark();
         }
 
-        this.currentHero = selectedHero; // Save the hero object
+        this.currentHero = selectedHero;
 
+        // --- THE MISSING ORC LOGIC IS BACK! ---
         String animationFolder = "soldier";
+        String spritePrefix = "Soldier";
+
         if (selectedHero.getName().contains("Mark")) {
             animationFolder = "soldier";
+            spritePrefix = "Soldier";
+        } else if (selectedHero.getName().contains("Ted")) {
+            animationFolder = "orc";
+            spritePrefix = "Orc";
         }
 
-        player = new Player(animationFolder, TILE_SIZE);
+        player = new Player(animationFolder, spritePrefix, TILE_SIZE);
     }
 
     private void loadSprites() {
@@ -104,7 +105,6 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
             BufferedImage doorWall = ImageIO.read(new File("images/map/atlas_walls_high-16x32-Sheet.png"));
 
-            // --- CLOSED DOOR SPRITES ---
             tdlWall = doorWall.getSubimage(272, 96, 16, 16);
             tdmWall = doorWall.getSubimage(288, 96, 16, 16);
             tdrWall = doorWall.getSubimage(304, 96, 16, 16);
@@ -113,7 +113,6 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
             bdlWall = doorWall.getSubimage(272, 112, 16, 16);
             bdmWall = doorWall.getSubimage(288, 112, 16, 16);
 
-            // --- OPEN/INTERACTIVE DOOR SPRITES ---
             itdlWall = doorWall.getSubimage(336, 96, 16, 16);
             itdmWall = doorWall.getSubimage(352, 96, 16, 16);
             itdrWall = doorWall.getSubimage(368, 96, 16, 16);
@@ -179,7 +178,6 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         if (player.isAttackFinished()) spacePressed = false;
 
-        // DOOR PROXIMITY CHECK
         int doorLeftEdge = 6 * TILE_SIZE;
         int doorRightEdge = 10 * TILE_SIZE;
         int doorInteractionDepth = 4 * TILE_SIZE;
@@ -228,7 +226,6 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
                 else if (tileID == 10 && bmWall != null) g2d.drawImage(bmWall, xPos, yPos, null);
                 else if (tileID == 11 && brWall != null) g2d.drawImage(brWall, xPos, yPos, null);
 
-                    // --- DYNAMIC 6-PIECE DOOR RENDER ---
                 else if (tileID >= 12 && tileID <= 17) {
                     if (isNearDoor) {
                         if (tileID == 12 && itdlWall != null) g2d.drawImage(itdlWall, xPos, yPos, null);
@@ -251,15 +248,10 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         player.render(g2d, TILE_SIZE);
 
-        // --- NEW: DRAW FLOATING TEXT IF NEAR DOOR ---
         if (isNearDoor) {
             g2d.setFont(new Font("Monospaced", Font.BOLD, 8));
-
-            // Drop shadow
             g2d.setColor(Color.BLACK);
             g2d.drawString("[E] ENTER ARENA", (7 * TILE_SIZE) - 4, TILE_SIZE + 1);
-
-            // Foreground text
             g2d.setColor(Color.YELLOW);
             g2d.drawString("[E] ENTER ARENA", (7 * TILE_SIZE) - 5, TILE_SIZE);
         }
@@ -274,15 +266,14 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
         if (code == KeyEvent.VK_D || code == KeyEvent.VK_RIGHT) rightPressed = true;
         if (code == KeyEvent.VK_SPACE) spacePressed = true;
 
-        // --- NEW: 'E' KEY INTERACTION ---
         if (code == KeyEvent.VK_E) {
             if (isNearDoor) {
                 running = false;
                 JFrame parentWindow = (JFrame) SwingUtilities.getWindowAncestor(this);
                 parentWindow.dispose();
 
-                // Launch Battle Arena with a dummy enemy!
                 Entity enemy = new Ted();
+                // --- FIXED: ADDED "Arcade" BACK IN SO IT COMPILES! ---
                 new GuiBattleArena(currentHero, enemy, "Arcade").setVisible(true);
             }
         }
