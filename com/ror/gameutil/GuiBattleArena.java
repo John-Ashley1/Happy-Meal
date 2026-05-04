@@ -3,11 +3,13 @@ package com.ror.gameutil;
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Skill;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -56,7 +58,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
         this.isAiMatch = "Arcade".equalsIgnoreCase(mode) || "PvAI".equalsIgnoreCase(mode);
 
-        // --- THE FIX 1: Reset all cooldowns for carried-over Arcade characters ---
         for (Skill s : p1.getSkills()) {
             while (!s.isReady()) s.reduceCooldown();
         }
@@ -284,7 +285,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         return btn;
     }
 
-    // --- THE FIX 2: A helper method to safely switch turns and tick down cooldowns! ---
     private void advanceTurn() {
         isPlayer1Turn = !isPlayer1Turn;
 
@@ -302,7 +302,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
             logMessage("⏰ " + idle.getName() + " was too slow!");
             applyDamage(idle, IDLE_HP_PENALTY);
 
-            advanceTurn(); // Use the new turn switcher!
+            advanceTurn();
 
             logMessage("⚡ Turn skipped!");
 
@@ -411,7 +411,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
         startIdleTimer();
 
         if (!tgt.isDead()) {
-            advanceTurn(); // Use the new turn switcher!
+            advanceTurn();
             updateUI();
 
             if (!isPlayer1Turn && isAiMatch) {
@@ -449,7 +449,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
         }
 
         if (!player1.isDead() && !player2.isDead()) {
-            advanceTurn(); // Use the new turn switcher!
+            advanceTurn();
             startIdleTimer();
         }
 
@@ -540,6 +540,23 @@ public class GuiBattleArena extends JFrame implements BattleView {
         }
     }
 
+    // --- ⚠️ THE FIX: EXACT FRAME COUNTS BASED ON YOUR SPRITESHEETS! ⚠️ ---
+    // Note: I matched the counts based on standard RPG archetypes and your uploaded images.
+    // If the Orc (10 frames) is actually 'Zack' instead of 'Clent', just swap their numbers below!
+    private int getFrameCount(String characterKey) {
+        switch (characterKey) {
+            case "ashley": return 7;  // Dark cloak, green magic (Confirmed)
+            case "mark":   return 10; // Assuming Dark armor, purple sword
+            case "ted":    return 6;  // Assuming Knight with red/grey armor and sword
+            case "clent":  return 10; // Assuming Orc with spear
+            case "den":    return 4;  // Assuming Small green goblin
+            case "trone":  return 4;  // Assuming Stone statue with hammer
+            case "vince":  return 10; // Assuming Purple-cloaked mage
+            case "zack":   return 10; // Assuming Red-caped crossbowman
+            default:       return 1;
+        }
+    }
+
     private void setCharacterImages() {
         SwingUtilities.invokeLater(() -> {
             loadImage(lblPlayer1, player1.getName());
@@ -549,21 +566,65 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
     private void loadImage(JLabel label, String name) {
         try {
+            Timer oldTimer = (Timer) label.getClientProperty("animTimer");
+            if (oldTimer != null) oldTimer.stop();
+
             String key = name.toLowerCase().replace("happy ", "");
-            java.net.URL url = null;
+            String capKey = Character.toUpperCase(key.charAt(0)) + key.substring(1);
 
-            url = getClass().getResource("/images/characters/" + key + "/" + key + ".gif");
+            java.net.URL assetUrl = getClass().getResource("/images/characters/" + key + "/" + capKey + "_Asset.png");
 
-            if (url == null)
-                url = getClass().getResource("/images/characters/" + key + "/" + key + ".png");
+            if (assetUrl != null) {
+                BufferedImage spriteSheet = ImageIO.read(assetUrl);
 
-            if (url == null)
-                url = getClass().getResource("/images/characters/" + key + "/" + key + ".jpg");
+                // Use the exact calculated frames!
+                int numFrames = getFrameCount(key);
 
-            if (url == null) {
-                String capKey = Character.toUpperCase(key.charAt(0)) + key.substring(1);
-                url = getClass().getResource("/images/characters/" + key + "/" + capKey + ".png");
+                int frameW = spriteSheet.getWidth() / numFrames;
+                int frameH = spriteSheet.getHeight();
+
+                if (spriteSheet.getWidth() % numFrames != 0) {
+                    System.out.println("WARNING: " + capKey + "_Asset.png width " + spriteSheet.getWidth() +
+                            " is not perfectly divisible by " + numFrames + ".");
+                }
+
+                int labelW = label.getWidth() > 10 ? label.getWidth() : 300;
+                int labelH = label.getHeight() > 10 ? label.getHeight() : 220;
+
+                double scale = Math.min((double) labelW / frameW, (double) labelH / frameH);
+                int dW = (int) (frameW * scale);
+                int dH = (int) (frameH * scale);
+
+                ImageIcon[] frames = new ImageIcon[numFrames];
+                for (int i = 0; i < numFrames; i++) {
+                    BufferedImage sub = spriteSheet.getSubimage(i * frameW, 0, frameW, frameH);
+                    frames[i] = new ImageIcon(sub.getScaledInstance(dW, dH, Image.SCALE_REPLICATE));
+                }
+
+                label.setIcon(frames[0]);
+                label.setText("");
+                label.setHorizontalAlignment(SwingConstants.CENTER);
+                label.setVerticalAlignment(SwingConstants.CENTER);
+                label.setOpaque(false);
+
+                if (numFrames > 1) {
+                    Timer animTimer = new Timer(150, e -> {
+                        Integer currentFrame = (Integer) label.getClientProperty("currentFrame");
+                        if (currentFrame == null) currentFrame = 0;
+                        currentFrame = (currentFrame + 1) % numFrames;
+
+                        label.setIcon(frames[currentFrame]);
+                        label.putClientProperty("currentFrame", currentFrame);
+                    });
+                    animTimer.start();
+                    label.putClientProperty("animTimer", animTimer);
+                }
+
+                return;
             }
+
+            java.net.URL url = getClass().getResource("/images/characters/" + key + "/" + key + ".png");
+            if (url == null) url = getClass().getResource("/images/characters/" + key + "/" + capKey + ".png");
 
             if (url == null) {
                 label.setText(name);
@@ -573,24 +634,19 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
             ImageIcon icon = new ImageIcon(url);
 
-            if (url.toString().endsWith(".gif")) {
-                label.setIcon(icon);
-            } else {
-                int labelW = label.getWidth()  > 10 ? label.getWidth()  : 300;
-                int labelH = label.getHeight() > 10 ? label.getHeight() : 220;
+            int labelW = label.getWidth()  > 10 ? label.getWidth()  : 300;
+            int labelH = label.getHeight() > 10 ? label.getHeight() : 220;
 
-                double scale = Math.min(
-                        (double) labelW / icon.getIconWidth(),
-                        (double) labelH / icon.getIconHeight()
-                );
+            double scale = Math.min(
+                    (double) labelW / icon.getIconWidth(),
+                    (double) labelH / icon.getIconHeight()
+            );
 
-                int dW = (int) (icon.getIconWidth() * scale);
-                int dH = (int) (icon.getIconHeight() * scale);
+            int dW = (int) (icon.getIconWidth() * scale);
+            int dH = (int) (icon.getIconHeight() * scale);
 
-                Image scaled = icon.getImage().getScaledInstance(dW, dH, Image.SCALE_SMOOTH);
-                label.setIcon(new ImageIcon(scaled));
-            }
-
+            Image scaled = icon.getImage().getScaledInstance(dW, dH, Image.SCALE_SMOOTH);
+            label.setIcon(new ImageIcon(scaled));
             label.setText("");
             label.setHorizontalAlignment(SwingConstants.CENTER);
             label.setVerticalAlignment(SwingConstants.CENTER);
