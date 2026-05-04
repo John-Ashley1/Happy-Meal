@@ -31,7 +31,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private static final int  IDLE_SECONDS    = 10;
     private static final int  IDLE_HP_PENALTY = 100;  // HP deducted if player idles
     private static final int  SKILL_MANA_COST = 2;    // mana cost per skill use
-    
+
     private java.util.Map<Entity, Integer> manaHalfPoints = new java.util.HashMap<>();
 
     // Colors
@@ -187,7 +187,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
         imgLabel.setOpaque(true);
         imgLabel.setBorder(BorderFactory.createLineBorder(accent.darker(), 2));
         imgLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        imgLabel.setPreferredSize(new Dimension(Short.MAX_VALUE, 200));
+        imgLabel.setPreferredSize(new Dimension(300, 220));
         imgLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         panel.add(imgLabel);
         panel.add(Box.createVerticalStrut(8));
@@ -262,14 +262,25 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
     private void startIdleTimer() {
         if (idleTimer != null) idleTimer.stop();
+
         idleTimer = new javax.swing.Timer(IDLE_SECONDS * 1000, e -> {
+
             Entity idle = isPlayer1Turn ? player1 : player2;
-            // Use takeDamage if available, otherwise reduce via reflection
-            applyDamage(idle, IDLE_HP_PENALTY);
-            logMessage("⏰ " + idle.getName() + " was idle! Lost " + IDLE_HP_PENALTY + " HP.");
+
+            logMessage("⏰ " + idle.getName() + " was too slow!");
+
+            // OPTIONAL: small penalty (not required)
+            applyDamage(idle, 50);
+
+            // 🔥 SWITCH TURN (THIS IS THE REAL FIX)
+            isPlayer1Turn = !isPlayer1Turn;
+
+            logMessage("⚡ Turn skipped!");
+
             updateUI();
             startIdleTimer();
         });
+
         idleTimer.setRepeats(false);
         idleTimer.start();
     }
@@ -472,41 +483,69 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
     private void loadImage(JLabel label, String name) {
         try {
-            String key = name.toLowerCase().replace("happy ", "");
-            java.net.URL url = getClass().getResource("/images/characters/" + key + ".jpg");
-            if (url == null) url = getClass().getResource("/images/characters/" + key + ".png");
+            String path = getGifPath(name);
+            java.net.URL url = getClass().getResource(path);
+
             if (url == null) {
-                String capKey = "Happy_" + Character.toUpperCase(key.charAt(0)) + key.substring(1);
-                url = getClass().getResource("/images/characters/" + capKey + ".png");
+                label.setText(name);
+                label.setIcon(null);
+                return;
             }
-            if (url == null) { label.setText(name); label.setIcon(null); return; }
 
-            ImageIcon raw = new ImageIcon(url);
-            int imgW = raw.getIconWidth();
-            int imgH = raw.getIconHeight();
+            ImageIcon icon = new ImageIcon(url);
 
-            int labelW = label.getWidth()  > 10 ? label.getWidth()  : 380;
-            int labelH = label.getHeight() > 10 ? label.getHeight() : 200;
+            // 🔥 TARGET SIZE (YOU CONTROL THIS)
+            int targetW = label.getWidth() > 0 ? label.getWidth() : 300;
+            int targetH = label.getHeight() > 0 ? label.getHeight() : 200;
 
-            // CONTAIN fit: scale down to fit inside the label, no cropping
-            double scale = Math.min((double) labelW / imgW, (double) labelH / imgH);
-            int drawW = (int)(imgW * scale);
-            int drawH = (int)(imgH * scale);
+            Image img = icon.getImage();
 
-            Image scaled = raw.getImage().getScaledInstance(drawW, drawH, Image.SCALE_AREA_AVERAGING);
+            // 🔥 KEEP RATIO (NO STRETCH)
+            int imgW = icon.getIconWidth();
+            int imgH = icon.getIconHeight();
+
+            double scale = Math.min((double) targetW / imgW, (double) targetH / imgH);
+
+            int newW = (int)(imgW * scale);
+            int newH = (int)(imgH * scale);
+
+            Image scaled = img.getScaledInstance(newW, newH, Image.SCALE_FAST);
+
             label.setIcon(new ImageIcon(scaled));
             label.setText("");
+
+            // 🔥 CENTER IT
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setVerticalAlignment(SwingConstants.CENTER);
+
             label.setOpaque(false);
-        } catch (Exception ignored) {
+
+        } catch (Exception e) {
             label.setText("?");
             label.setIcon(null);
+        }
+    }
+
+    private String getGifPath(String name) {
+        switch (name) {
+            case "Happy Ashley": return "/images/characters/ashley_Gif.gif";
+            case "Happy Clent":  return "/images/characters/clent_Gif.gif";
+            case "Happy Den":    return "/images/characters/den_gif.gif";
+            case "Happy Mark":   return "/images/characters/mark_gif.gif";
+            case "Happy Ted":    return "/images/characters/ted_gif.gif";
+            case "Happy Throne": return "/images/characters/throne_gif.gif";
+            case "Happy Vince":  return "/images/characters/vince_gif.gif";
+            case "Happy Zack":   return "/images/characters/zack_gif.gif";
+
+            default: return "/images/characters/mark_gif.gif";
         }
     }
 
     private void returnToMenu() {
         stopIdleTimer();
         dispose();
-        new GameModeMenu(player1.getName(), null).setVisible(true);
+
+        new HeroSelection("Player", "PvP", "Normal").setVisible(true); // 🔥 GO HERE INSTEAD
     }
 
     @Override
