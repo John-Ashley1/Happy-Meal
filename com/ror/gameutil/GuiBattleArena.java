@@ -2,12 +2,14 @@ package com.ror.gameutil;
 
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Skill;
-import com.ror.gamemodel.Playable.Mark; // For testing
-import com.ror.gamemodel.Playable.Ted;  // For testing
+import com.ror.gamemodel.Playable.Mark;
+import com.ror.gamemodel.Playable.Ted;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 public class GuiBattleArena extends JFrame implements BattleView {
 
@@ -15,6 +17,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private Entity player1;
     private Entity player2;
     private boolean isPlayer1Turn = true;
+    private String mode;
 
     // UI Components
     private JProgressBar topHealthBar, bottomHealthBar;
@@ -22,9 +25,10 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private JTextArea combatLog;
     private JPanel skillsPanel;
 
-    public GuiBattleArena(Entity player1, Entity player2) {
+    public GuiBattleArena(Entity player1, Entity player2, String mode) {
         this.player1 = player1;
         this.player2 = player2;
+        this.mode = mode;
 
         // 1. Window Setup
         setTitle("Happy Meal Tournament - Battle");
@@ -34,7 +38,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         getContentPane().setBackground(Color.BLACK);
         setLayout(new BorderLayout(10, 10));
 
-        // Add some padding around the edges of the window
         ((JPanel)getContentPane()).setBorder(new EmptyBorder(10, 10, 10, 10));
 
         // 2. Build the UI Sections
@@ -42,15 +45,50 @@ public class GuiBattleArena extends JFrame implements BattleView {
         buildCenterLog();
         buildBottomPanel();
 
+        // --- NEW: Attach the global Escape key listener! ---
+        setupPauseMenu();
+
         // 3. Start the Game!
         logMessage("A battle begins! " + player1.getName() + " vs. " + player2.getName() + ".");
         updateTurnUI();
     }
 
-    // --- UI CONSTRUCTION ---
+    // --- NEW: THE PAUSE MENU LOGIC ---
+    private void setupPauseMenu() {
+        // Create the action we want to happen when ESC is pressed
+        Action escapeAction = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                // Summon the reusable Main Menu!
+                MainMenu pauseMenu = new MainMenu(
+                        GuiBattleArena.this,
+
+                        // ACTION A: Resume
+                        () -> {
+                            // Because it's turn-based, we don't need to restart a loop.
+                            // The dialog closing is enough to unfreeze the screen!
+                        },
+
+                        // ACTION B: Quit
+                        () -> {
+                            // Go back to the Intro Screen and destroy the arena
+                            new IntroScreen().setVisible(true);
+                            dispose();
+                        }
+                );
+
+                pauseMenu.setVisible(true); // Show the menu and freeze the arena
+            }
+        };
+
+        // Bind the ESCAPE key to our action across the ENTIRE window
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "ESCAPE");
+        getRootPane().getActionMap().put("ESCAPE", escapeAction);
+    }
 
     private void buildTopPanel() {
-        // Matches the "Goblin" section in your screenshot
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         topPanel.setBackground(Color.BLACK);
         topPanel.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
@@ -64,7 +102,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         topHealthBar.setPreferredSize(new Dimension(300, 25));
         topHealthBar.setForeground(Color.GREEN);
         topHealthBar.setBackground(Color.DARK_GRAY);
-        // Removes the percentage text so it's just a solid bar like your image
         topHealthBar.setStringPainted(false);
 
         topPanel.add(topNameLabel);
@@ -74,10 +111,9 @@ public class GuiBattleArena extends JFrame implements BattleView {
     }
 
     private void buildCenterLog() {
-        // Matches the black text area
         combatLog = new JTextArea();
         combatLog.setBackground(Color.BLACK);
-        combatLog.setForeground(Color.WHITE); // Default white text
+        combatLog.setForeground(Color.WHITE);
         combatLog.setFont(new Font("Monospaced", Font.PLAIN, 16));
         combatLog.setEditable(false);
         combatLog.setLineWrap(true);
@@ -85,18 +121,15 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
         JScrollPane scrollPane = new JScrollPane(combatLog);
         scrollPane.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
-        // Force the scrollbar to match the dark theme a bit better if possible
         scrollPane.getVerticalScrollBar().setBackground(Color.BLACK);
 
         add(scrollPane, BorderLayout.CENTER);
     }
 
     private void buildBottomPanel() {
-        // This holds BOTH the player stats box AND the skills box
         JPanel bottomWrapper = new JPanel(new BorderLayout(0, 10));
         bottomWrapper.setBackground(Color.BLACK);
 
-        // -- Player Status Box (Matches "Sky Mage" section) --
         JPanel statusBox = new JPanel(new BorderLayout(15, 0));
         statusBox.setBackground(Color.BLACK);
         statusBox.setBorder(BorderFactory.createCompoundBorder(
@@ -113,9 +146,8 @@ public class GuiBattleArena extends JFrame implements BattleView {
         bottomHealthBar.setPreferredSize(new Dimension(400, 30));
         bottomHealthBar.setForeground(Color.GREEN);
         bottomHealthBar.setBackground(Color.DARK_GRAY);
-        bottomHealthBar.setStringPainted(true); // Shows "HP: X/Y" text on the bar
+        bottomHealthBar.setStringPainted(true);
 
-        // We use this to show Mana instead of Level!
         bottomStatsLabel = new JLabel("Mana: " + player1.getCurrentMana());
         bottomStatsLabel.setForeground(Color.WHITE);
         bottomStatsLabel.setFont(new Font("Monospaced", Font.PLAIN, 14));
@@ -124,7 +156,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
         statusBox.add(bottomHealthBar, BorderLayout.CENTER);
         statusBox.add(bottomStatsLabel, BorderLayout.EAST);
 
-        // -- Skills Box (Matches the 3 buttons at the bottom) --
         skillsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
         skillsPanel.setBackground(Color.BLACK);
         skillsPanel.setPreferredSize(new Dimension(800, 60));
@@ -135,26 +166,20 @@ public class GuiBattleArena extends JFrame implements BattleView {
         add(bottomWrapper, BorderLayout.SOUTH);
     }
 
-    // --- GAME LOGIC & UI UPDATES ---
-
     private void updateTurnUI() {
-        // 1. Determine whose turn it is
         Entity activePlayer = isPlayer1Turn ? player1 : player2;
 
         logMessage("\n--- " + activePlayer.getName().toUpperCase() + "'S TURN ---");
 
-        // 2. Reduce cooldowns for the active player at the start of their turn
         for (Skill skill : activePlayer.getSkills()) {
             skill.reduceCooldown();
         }
 
-        // 3. Update Health Bars and Mana Labels
         topHealthBar.setValue(player2.getCurrentHealth());
         bottomHealthBar.setValue(player1.getCurrentHealth());
         bottomHealthBar.setString("HP: " + player1.getCurrentHealth() + "/" + player1.getMaxHealth());
         bottomStatsLabel.setText("Mana: " + player1.getCurrentMana());
 
-        // 4. Clear old buttons and generate new ones for the active player
         skillsPanel.removeAll();
 
         for (Skill skill : activePlayer.getSkills()) {
@@ -168,7 +193,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
             if (skill.isReady()) {
                 skillBtn.setText(skill.getName());
                 skillBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                // Add the click event
                 skillBtn.addActionListener(e -> executeSkill(skill, activePlayer));
             } else {
                 skillBtn.setText(skill.getName() + " (CD: " + skill.getCooldown() + ")");
@@ -178,7 +202,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
             skillsPanel.add(skillBtn);
         }
 
-        // Force the GUI to redraw the buttons
         skillsPanel.revalidate();
         skillsPanel.repaint();
     }
@@ -186,22 +209,31 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private void executeSkill(Skill skill, Entity activePlayer) {
         Entity targetPlayer = isPlayer1Turn ? player2 : player1;
 
-        // Apply the skill math (this triggers our logMessage below!)
         skill.apply(activePlayer, targetPlayer, this);
         skill.resetCooldown();
 
-        // Check for game over
         if (targetPlayer.isDead()) {
             updateHealthBarsFinal();
             logMessage("\n*** K.O.! " + targetPlayer.getName() + " has been defeated! ***");
             logMessage("*** WINNER: " + activePlayer.getName().toUpperCase() + " ***");
-            skillsPanel.removeAll(); // Remove buttons so they can't keep attacking
+
+            skillsPanel.removeAll();
+
+            JButton returnBtn = new JButton("CONTINUE");
+            returnBtn.setBackground(new Color(50, 200, 50));
+            returnBtn.setForeground(Color.WHITE);
+            returnBtn.setFont(new Font("Monospaced", Font.BOLD, 18));
+            returnBtn.setFocusPainted(false);
+            returnBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            returnBtn.addActionListener(e -> routeToNextScreen());
+
+            skillsPanel.add(returnBtn);
+
             skillsPanel.revalidate();
             skillsPanel.repaint();
             return;
         }
 
-        // Swap turns and update the UI for the next player
         isPlayer1Turn = !isPlayer1Turn;
         updateTurnUI();
     }
@@ -212,21 +244,30 @@ public class GuiBattleArena extends JFrame implements BattleView {
         bottomHealthBar.setString("HP: " + player1.getCurrentHealth() + "/" + player1.getMaxHealth());
     }
 
-    // Implementation of the BattleView Interface
+    private void routeToNextScreen() {
+        dispose();
+
+        if ("Arcade".equalsIgnoreCase(mode)) {
+            player1.heal(player1.getMaxHealth());
+            new ArcadeFrame(player1, player2).setVisible(true);
+        } else if ("PvP".equalsIgnoreCase(mode) || "PvAI".equalsIgnoreCase(mode)) {
+            new HeroSelection("Player", mode, "Normal").setVisible(true);
+        } else {
+            new GameModeMenu("Player").setVisible(true);
+        }
+    }
+
     @Override
     public void logMessage(String message) {
         combatLog.append(message + "\n");
-        // Auto-scroll to the bottom of the text area
         combatLog.setCaretPosition(combatLog.getDocument().getLength());
     }
 
-    // --- QUICK TEST ---
     public static void main(String[] args) {
-        // This is just to test the UI quickly without navigating your whole menu
         SwingUtilities.invokeLater(() -> {
             Entity p1 = new Mark();
             Entity p2 = new Ted();
-            new GuiBattleArena(p1, p2).setVisible(true);
+            new GuiBattleArena(p1, p2, "Test").setVisible(true);
         });
     }
 }

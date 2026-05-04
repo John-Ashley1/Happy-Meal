@@ -194,8 +194,9 @@ public class HeroSelection extends JFrame implements ActionListener {
 
         new GuiBattleArena(
                 createHeroEntity(player1Hero),
-                createHeroEntity(player2Hero)
-        ).setVisible(true);
+                createHeroEntity(player2Hero),
+                mode // Pass the mode from HeroSelection!
+    ).setVisible(true);
 
         dispose();
     }
