@@ -10,14 +10,14 @@ public class IntroScreen extends JFrame {
 
     private JPanel mainPanel;
     private JButton startButton;
+    private JButton aboutButton;
+    private JButton exitButton;
     private SoundManager sound;
 
     public IntroScreen() {
-
         sound = new SoundManager();
         sound.setFile(SoundManager.BGM_MAIN);
         sound.loop();
-
         initUI();
     }
 
@@ -35,7 +35,6 @@ public class IntroScreen extends JFrame {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         mainPanel = new JPanel() {
-
             private Image[] backgrounds;
             private int currentBg = 0;
 
@@ -66,9 +65,10 @@ public class IntroScreen extends JFrame {
         };
 
         setContentPane(mainPanel);
-
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-        mainPanel.setBorder(new EmptyBorder(100, 50, 100, 50));
+
+        // --- Tightened borders to maximize screen space ---
+        mainPanel.setBorder(new EmptyBorder(0, 50, 10, 50));
 
         // --- Logo Implementation ---
         JLabel titleLabel = new JLabel("", SwingConstants.CENTER);
@@ -78,7 +78,8 @@ public class IntroScreen extends JFrame {
             java.net.URL logoUrl = getClass().getResource("/images/map/HappyMeal.png");
             if (logoUrl != null) {
                 ImageIcon rawIcon = new ImageIcon(logoUrl);
-                Image scaledImg = rawIcon.getImage().getScaledInstance(600, -1, Image.SCALE_SMOOTH);
+                // Scaled down from 600 to 500 to save vertical height
+                Image scaledImg = rawIcon.getImage().getScaledInstance(500, -1, Image.SCALE_SMOOTH);
                 titleLabel.setIcon(new ImageIcon(scaledImg));
             } else {
                 titleLabel.setText("HAPPY MEAL");
@@ -89,63 +90,95 @@ public class IntroScreen extends JFrame {
             System.out.println("DEBUG: Could not load HappyMeal.png from images/map/");
         }
 
-        // --- NEW: Image-based Start Button with Hover Effect ---
-        startButton = new JButton();
-        startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        startButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        // --- Create Our Buttons (Scaled to 220px to fit all three) ---
+        startButton = createImageButton("/images/map/START.png", 220, "START");
+        aboutButton = createImageButton("/images/map/ABOUTUS.png", 220, "ABOUT US");
+        exitButton  = createImageButton("/images/map/EXIT.png", 220, "EXIT");
 
-        // Strip away default button UI (borders, background fills, etc.)
-        startButton.setFocusPainted(false);
-        startButton.setContentAreaFilled(false);
-        startButton.setBorderPainted(false);
-
-        try {
-            java.net.URL startUrl = getClass().getResource("/images/map/START.png");
-            if (startUrl != null) {
-                ImageIcon rawStart = new ImageIcon(startUrl);
-                // Scale the start button to a good size (250px wide)
-                Image scaledStart = rawStart.getImage().getScaledInstance(250, -1, Image.SCALE_SMOOTH);
-                ImageIcon defaultIcon = new ImageIcon(scaledStart);
-
-                startButton.setIcon(defaultIcon);
-
-                // --- MAGIC: Generate the "Light Up" Hover Icon ---
-                BufferedImage hoverImg = new BufferedImage(defaultIcon.getIconWidth(), defaultIcon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
-                Graphics2D g2d = hoverImg.createGraphics();
-                g2d.drawImage(defaultIcon.getImage(), 0, 0, null);
-
-                // SrcAtop means we only draw the white glow over pixels that actually exist (ignoring transparency)
-                g2d.setComposite(AlphaComposite.SrcAtop);
-                g2d.setColor(new Color(255, 255, 255, 70)); // 70 alpha white glow
-                g2d.fillRect(0, 0, hoverImg.getWidth(), hoverImg.getHeight());
-                g2d.dispose();
-
-                // Tell Swing to swap to this glowing image when the mouse hovers!
-                startButton.setRolloverIcon(new ImageIcon(hoverImg));
-                startButton.setPressedIcon(defaultIcon); // Returns to normal size/color when clicked
-
-            } else {
-                // Failsafe if image is missing
-                startButton.setText("START");
-                startButton.setFont(new Font("Arial", Font.BOLD, 24));
-                startButton.setBackground(new Color(220, 20, 60));
-                startButton.setForeground(Color.WHITE);
-                startButton.setContentAreaFilled(true);
-            }
-        } catch (Exception ex) {
-            System.out.println("DEBUG: Could not load START.png from images/map/");
-        }
-
+        // --- Assign Button Actions ---
         startButton.addActionListener(e -> {
             new HappyMealGame(sound).setVisible(true);
             dispose();
         });
 
-        mainPanel.add(Box.createVerticalGlue());
+        aboutButton.addActionListener(e -> {
+            new AboutWindow().setVisible(true);
+        });
+
+        exitButton.addActionListener(e -> {
+            System.exit(0);
+        });
+
+        // --- NEW STACKING ORDER (Fixed for 800x600 resolution) ---
+
+        // Puts the logo near the top sky instead of the middle of the screen
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 30)));
         mainPanel.add(titleLabel);
-        mainPanel.add(Box.createRigidArea(new Dimension(0, 40)));
+
+        // Gap between Logo and Start Button
+        mainPanel.add(Box.createRigidArea(new Dimension(0, 0)));
         mainPanel.add(startButton);
+
+        // Tight 5px gap between buttons
+        mainPanel.add(Box.createRigidArea(new Dimension(0, -50)));
+        mainPanel.add(aboutButton);
+
+        mainPanel.add(Box.createRigidArea(new Dimension(0, -50)));
+        mainPanel.add(exitButton);
+
+        // Pushes everything up from the bottom
         mainPanel.add(Box.createVerticalGlue());
+    }
+
+    /**
+     * HELPER METHOD: Automatically builds a button from an image, strips default Swing UI,
+     * and generates a glowing hover effect!
+     */
+    private JButton createImageButton(String imagePath, int targetWidth, String fallbackText) {
+        JButton btn = new JButton();
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        btn.setFocusPainted(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+
+        try {
+            java.net.URL imgUrl = getClass().getResource(imagePath);
+            if (imgUrl != null) {
+                ImageIcon rawIcon = new ImageIcon(imgUrl);
+                Image scaledImg = rawIcon.getImage().getScaledInstance(targetWidth, -1, Image.SCALE_SMOOTH);
+                ImageIcon defaultIcon = new ImageIcon(scaledImg);
+
+                btn.setIcon(defaultIcon);
+
+                BufferedImage hoverImg = new BufferedImage(defaultIcon.getIconWidth(), defaultIcon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2d = hoverImg.createGraphics();
+                g2d.drawImage(defaultIcon.getImage(), 0, 0, null);
+
+                g2d.setComposite(AlphaComposite.SrcAtop);
+                g2d.setColor(new Color(255, 255, 255, 70));
+                g2d.fillRect(0, 0, hoverImg.getWidth(), hoverImg.getHeight());
+                g2d.dispose();
+
+                btn.setRolloverIcon(new ImageIcon(hoverImg));
+                btn.setPressedIcon(defaultIcon);
+
+                // Forces the layout manager to respect the image size, preventing stretching bugs
+                btn.setMaximumSize(new Dimension(defaultIcon.getIconWidth(), defaultIcon.getIconHeight()));
+
+            } else {
+                btn.setText(fallbackText);
+                btn.setFont(new Font("Arial", Font.BOLD, 24));
+                btn.setBackground(new Color(220, 20, 60));
+                btn.setForeground(Color.WHITE);
+                btn.setContentAreaFilled(true);
+            }
+        } catch (Exception ex) {
+            System.out.println("DEBUG: Could not load " + imagePath);
+        }
+
+        return btn;
     }
 
     public static void main(String[] args) {
