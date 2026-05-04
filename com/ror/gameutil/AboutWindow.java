@@ -98,11 +98,11 @@ public class AboutWindow extends JFrame {
         };
 
         String[] images = {
-                "/images/characters/mark.jpg",
-                "/images/characters/ted.jpg",
-                "/images/characters/den.jpg",
-                "/images/characters/ashley.jpg",
-                "/images/characters/vince.jpg"
+                "/images/characters/mark/mark.jpg",
+                "/images/characters/ted/ted.jpg",
+                "/images/characters/den/den.jpg",
+                "/images/characters/ashley/ashley.jpg",
+                "/images/characters/vince/vince.jpg"
         };
 
         for (int i = 0; i < images.length; i++) {

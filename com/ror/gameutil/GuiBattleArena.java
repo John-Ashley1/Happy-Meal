@@ -2,254 +2,616 @@ package com.ror.gameutil;
 
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Skill;
-import com.ror.gamemodel.Playable.Mark;
-import com.ror.gamemodel.Playable.Ted;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
+import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class GuiBattleArena extends JFrame implements BattleView {
 
-    // Data Models
-    private Entity player1;
-    private Entity player2;
-    private boolean isPlayer1Turn = true;
+    private Entity player1, player2;
     private String mode;
+    private boolean isPlayer1Turn = true;
+    private boolean isAiMatch = false;
 
-    // UI Components
-    private JProgressBar topHealthBar, bottomHealthBar;
-    private JLabel topNameLabel, bottomNameLabel, bottomStatsLabel;
-    private JTextArea combatLog;
-    private JPanel skillsPanel;
+    private int p1Wins = 0, p2Wins = 0, round = 1;
+    private final int MAX_ROUNDS = 3;
 
-    public GuiBattleArena(Entity player1, Entity player2, String mode) {
-        this.player1 = player1;
-        this.player2 = player2;
+    private JLabel lblPlayer1, lblPlayer2;
+    private JProgressBar pbHealthP1, pbManaP1, pbHealthP2, pbManaP2;
+    private JTextArea txtBattleLog;
+    private JButton[] skillButtonsP1 = new JButton[3];
+    private JButton[] skillButtonsP2 = new JButton[3];
+
+    private JLabel lblRound;
+    private JLabel lblTurnIndicator;
+
+    private javax.swing.Timer idleTimer;
+    private static final int  IDLE_SECONDS    = 10;
+    private static final int  IDLE_HP_PENALTY = 100;
+    private static final int  SKILL_MANA_COST = 2;
+
+    private java.util.Map<Entity, Integer> manaHalfPoints = new java.util.HashMap<>();
+
+    private static final Color BG_DARK      = new Color(10, 10, 18);
+    private static final Color P1_COLOR     = new Color(0, 200, 255);
+    private static final Color P2_COLOR     = new Color(255, 80, 80);
+    private static final Color HP_COLOR     = new Color(50, 220, 100);
+    private static final Color MANA_COLOR   = new Color(80, 120, 255);
+    private static final Color GOLD         = new Color(255, 200, 50);
+    private static final Color BTN_READY    = new Color(30, 30, 50);
+    private static final Color BTN_DISABLED = new Color(20, 20, 30);
+    private static final Color LOG_BG       = new Color(8, 8, 15);
+    private static final Color LOG_FG       = new Color(180, 255, 160);
+
+    public GuiBattleArena(Entity p1, Entity p2, String mode) {
+        this.player1 = p1;
+        this.player2 = p2;
         this.mode = mode;
 
-        // 1. Window Setup
-        setTitle("Happy Meal Tournament - Battle");
-        setSize(800, 600);
-        setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        getContentPane().setBackground(Color.BLACK);
-        setLayout(new BorderLayout(10, 10));
+        this.isAiMatch = "Arcade".equalsIgnoreCase(mode) || "PvAI".equalsIgnoreCase(mode);
 
-        ((JPanel)getContentPane()).setBorder(new EmptyBorder(10, 10, 10, 10));
+        // --- THE FIX 1: Reset all cooldowns for carried-over Arcade characters ---
+        for (Skill s : p1.getSkills()) {
+            while (!s.isReady()) s.reduceCooldown();
+        }
+        for (Skill s : p2.getSkills()) {
+            while (!s.isReady()) s.reduceCooldown();
+        }
 
-        // 2. Build the UI Sections
-        buildTopPanel();
-        buildCenterLog();
-        buildBottomPanel();
-
-        // --- NEW: Attach the global Escape key listener! ---
+        initComponents();
         setupPauseMenu();
+        setCharacterImages();
+        updateUI();
 
-        // 3. Start the Game!
-        logMessage("A battle begins! " + player1.getName() + " vs. " + player2.getName() + ".");
-        updateTurnUI();
+        logMessage("⚔  BATTLE START!  " + p1.getName() + "  vs  " + p2.getName() + (isAiMatch ? " [AI]" : ""));
+        startIdleTimer();
     }
 
-    // --- NEW: THE PAUSE MENU LOGIC ---
+    private void initComponents() {
+        setTitle("⚔ Battle Arena");
+        setSize(920, 720);
+        setMinimumSize(new Dimension(860, 680));
+        setLocationRelativeTo(null);
+        setResizable(false);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        getContentPane().setBackground(BG_DARK);
+        setLayout(new BorderLayout(0, 0));
+
+        add(buildTopBar(),    BorderLayout.NORTH);
+        add(buildMainPanel(), BorderLayout.CENTER);
+        add(buildBottomBar(), BorderLayout.SOUTH);
+    }
+
     private void setupPauseMenu() {
-        // Create the action we want to happen when ESC is pressed
         Action escapeAction = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-
-                // Summon the reusable Main Menu!
                 MainMenu pauseMenu = new MainMenu(
                         GuiBattleArena.this,
-
-                        // ACTION A: Resume
+                        () -> {},
                         () -> {
-                            // Because it's turn-based, we don't need to restart a loop.
-                            // The dialog closing is enough to unfreeze the screen!
-                        },
-
-                        // ACTION B: Quit
-                        () -> {
-                            // Go back to the Intro Screen and destroy the arena
+                            stopIdleTimer();
                             new IntroScreen().setVisible(true);
                             dispose();
                         }
                 );
-
-                pauseMenu.setVisible(true); // Show the menu and freeze the arena
+                pauseMenu.setVisible(true);
             }
         };
 
-        // Bind the ESCAPE key to our action across the ENTIRE window
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "ESCAPE");
         getRootPane().getActionMap().put("ESCAPE", escapeAction);
     }
 
-    private void buildTopPanel() {
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        topPanel.setBackground(Color.BLACK);
-        topPanel.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+    private JPanel buildTopBar() {
+        JPanel top = new JPanel(null);
+        top.setPreferredSize(new Dimension(0, 70));
+        top.setBackground(new Color(14, 14, 24));
+        top.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(40, 40, 70)));
 
-        topNameLabel = new JLabel(player2.getName());
-        topNameLabel.setForeground(Color.WHITE);
-        topNameLabel.setFont(new Font("Monospaced", Font.BOLD, 18));
+        lblTurnIndicator = new JLabel("", SwingConstants.CENTER);
+        lblTurnIndicator.setFont(new Font("Monospaced", Font.BOLD, 20));
+        lblTurnIndicator.setForeground(Color.WHITE);
+        lblTurnIndicator.setBounds(0, 8, 900, 28);
+        top.add(lblTurnIndicator);
 
-        topHealthBar = new JProgressBar(0, player2.getMaxHealth());
-        topHealthBar.setValue(player2.getCurrentHealth());
-        topHealthBar.setPreferredSize(new Dimension(300, 25));
-        topHealthBar.setForeground(Color.GREEN);
-        topHealthBar.setBackground(Color.DARK_GRAY);
-        topHealthBar.setStringPainted(false);
+        lblRound = new JLabel("ROUND  1  /  3", SwingConstants.CENTER);
+        lblRound.setFont(new Font("Monospaced", Font.BOLD, 14));
+        lblRound.setForeground(GOLD);
+        lblRound.setBounds(0, 38, 900, 22);
+        top.add(lblRound);
 
-        topPanel.add(topNameLabel);
-        topPanel.add(topHealthBar);
-
-        add(topPanel, BorderLayout.NORTH);
+        return top;
     }
 
-    private void buildCenterLog() {
-        combatLog = new JTextArea();
-        combatLog.setBackground(Color.BLACK);
-        combatLog.setForeground(Color.WHITE);
-        combatLog.setFont(new Font("Monospaced", Font.PLAIN, 16));
-        combatLog.setEditable(false);
-        combatLog.setLineWrap(true);
-        combatLog.setWrapStyleWord(true);
+    private JPanel buildMainPanel() {
+        JPanel main = new JPanel(new BorderLayout(10, 8)) {
+            private Image bgImage;
+            {
+                try {
+                    java.net.URL url = getClass().getResource("/images/BG/bg_4.png");
+                    if (url != null) bgImage = new ImageIcon(url).getImage();
+                } catch (Exception ignored) {}
+            }
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (bgImage != null)
+                    g.drawImage(bgImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        };
+        main.setOpaque(false);
 
-        JScrollPane scrollPane = new JScrollPane(combatLog);
-        scrollPane.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
-        scrollPane.getVerticalScrollBar().setBackground(Color.BLACK);
+        JPanel fightersRow = new JPanel(new GridLayout(1, 2, 12, 0));
+        fightersRow.setOpaque(false);
+        fightersRow.add(buildFighterPanel(true));
+        fightersRow.add(buildFighterPanel(false));
+        main.add(fightersRow, BorderLayout.CENTER);
 
-        add(scrollPane, BorderLayout.CENTER);
+        txtBattleLog = new JTextArea(4, 60);
+        txtBattleLog.setEditable(false);
+        txtBattleLog.setBackground(LOG_BG);
+        txtBattleLog.setForeground(LOG_FG);
+        txtBattleLog.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        txtBattleLog.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+        txtBattleLog.setLineWrap(true);
+        txtBattleLog.setWrapStyleWord(true);
+
+        JScrollPane logScroll = new JScrollPane(txtBattleLog);
+        logScroll.setPreferredSize(new Dimension(0, 90));
+        logScroll.setBorder(BorderFactory.createLineBorder(new Color(35, 35, 60), 1));
+        logScroll.setBackground(LOG_BG);
+        main.add(logScroll, BorderLayout.SOUTH);
+
+        return main;
     }
 
-    private void buildBottomPanel() {
-        JPanel bottomWrapper = new JPanel(new BorderLayout(0, 10));
-        bottomWrapper.setBackground(Color.BLACK);
+    private JPanel buildFighterPanel(boolean isP1) {
+        if (isP1) {
+            pbHealthP1 = createBar(HP_COLOR);
+            pbManaP1   = createBar(MANA_COLOR);
+            lblPlayer1 = new JLabel();
+        } else {
+            pbHealthP2 = createBar(HP_COLOR);
+            pbManaP2   = createBar(MANA_COLOR);
+            lblPlayer2 = new JLabel();
+        }
 
-        JPanel statusBox = new JPanel(new BorderLayout(15, 0));
-        statusBox.setBackground(Color.BLACK);
-        statusBox.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.WHITE, 2),
-                new EmptyBorder(10, 10, 10, 10)
+        JProgressBar hpBar   = isP1 ? pbHealthP1 : pbHealthP2;
+        JProgressBar manaBar = isP1 ? pbManaP1   : pbManaP2;
+        JLabel imgLabel      = isP1 ? lblPlayer1  : lblPlayer2;
+        JButton[] skillBtns  = isP1 ? skillButtonsP1 : skillButtonsP2;
+        Entity entity        = isP1 ? player1 : player2;
+        Color accent         = isP1 ? P1_COLOR : P2_COLOR;
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setOpaque(false);
+        panel.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(accent.darker().darker(), 2),
+                BorderFactory.createEmptyBorder(8, 8, 8, 8)
         ));
 
-        bottomNameLabel = new JLabel(player1.getName());
-        bottomNameLabel.setForeground(Color.WHITE);
-        bottomNameLabel.setFont(new Font("Monospaced", Font.BOLD, 18));
+        String tag = (!isP1 && isAiMatch) ? " [AI]" : "";
+        JLabel nameLabel = new JLabel(entity.getName() + tag, SwingConstants.CENTER);
+        nameLabel.setFont(new Font("Monospaced", Font.BOLD, 16));
+        nameLabel.setForeground(accent);
+        nameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        nameLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+        panel.add(nameLabel);
+        panel.add(Box.createVerticalStrut(6));
 
-        bottomHealthBar = new JProgressBar(0, player1.getMaxHealth());
-        bottomHealthBar.setValue(player1.getCurrentHealth());
-        bottomHealthBar.setPreferredSize(new Dimension(400, 30));
-        bottomHealthBar.setForeground(Color.GREEN);
-        bottomHealthBar.setBackground(Color.DARK_GRAY);
-        bottomHealthBar.setStringPainted(true);
+        imgLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        imgLabel.setVerticalAlignment(SwingConstants.CENTER);
+        imgLabel.setBackground(new Color(14, 14, 22));
+        imgLabel.setOpaque(true);
+        imgLabel.setBorder(BorderFactory.createLineBorder(accent.darker(), 2));
+        imgLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        imgLabel.setPreferredSize(new Dimension(300, 220));
+        imgLabel.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        panel.add(imgLabel);
+        panel.add(Box.createVerticalStrut(8));
 
-        bottomStatsLabel = new JLabel("Mana: " + player1.getCurrentMana());
-        bottomStatsLabel.setForeground(Color.WHITE);
-        bottomStatsLabel.setFont(new Font("Monospaced", Font.PLAIN, 14));
+        hpBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        hpBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        hpBar.setMinimumSize(new Dimension(0, 36));
+        hpBar.setPreferredSize(new Dimension(Short.MAX_VALUE, 36));
+        panel.add(hpBar);
+        panel.add(Box.createVerticalStrut(5));
 
-        statusBox.add(bottomNameLabel, BorderLayout.WEST);
-        statusBox.add(bottomHealthBar, BorderLayout.CENTER);
-        statusBox.add(bottomStatsLabel, BorderLayout.EAST);
+        manaBar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        manaBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        manaBar.setMinimumSize(new Dimension(0, 36));
+        manaBar.setPreferredSize(new Dimension(Short.MAX_VALUE, 36));
+        panel.add(manaBar);
+        panel.add(Box.createVerticalStrut(8));
 
-        skillsPanel = new JPanel(new GridLayout(1, 3, 10, 0));
-        skillsPanel.setBackground(Color.BLACK);
-        skillsPanel.setPreferredSize(new Dimension(800, 60));
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            skillBtns[i] = styledButton("Skill " + (i + 1), BTN_READY);
+            skillBtns[i].setAlignmentX(Component.CENTER_ALIGNMENT);
+            skillBtns[i].setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+            skillBtns[i].setMinimumSize(new Dimension(0, 42));
+            skillBtns[i].setPreferredSize(new Dimension(Short.MAX_VALUE, 42));
+            skillBtns[i].setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(accent.darker().darker(), 1),
+                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
+            ));
+            skillBtns[i].addActionListener(e -> useSkill(idx, isP1));
+            panel.add(skillBtns[i]);
+            if (i < 2) panel.add(Box.createVerticalStrut(4));
+        }
 
-        bottomWrapper.add(statusBox, BorderLayout.NORTH);
-        bottomWrapper.add(skillsPanel, BorderLayout.SOUTH);
-
-        add(bottomWrapper, BorderLayout.SOUTH);
+        return panel;
     }
 
-    private void updateTurnUI() {
+    private JPanel buildBottomBar() {
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottom.setBackground(new Color(14, 14, 24));
+        bottom.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(40, 40, 70)));
+        JLabel hint = new JLabel("Select a skill to attack — Best of 3 Rounds | [ESC] Pause Menu");
+        hint.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        hint.setForeground(new Color(90, 90, 120));
+        bottom.add(hint);
+        return bottom;
+    }
+
+    private JProgressBar createBar(Color color) {
+        JProgressBar bar = new JProgressBar(0, 100);
+        bar.setStringPainted(true);
+        bar.setForeground(color);
+        bar.setBackground(new Color(25, 25, 40));
+        bar.setFont(new Font("Monospaced", Font.BOLD, 14));
+        bar.setPreferredSize(new Dimension(0, 34));
+        return bar;
+    }
+
+    private JButton styledButton(String text, Color bg) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Monospaced", Font.BOLD, 12));
+        btn.setFocusPainted(false);
+        btn.setBackground(bg);
+        btn.setForeground(Color.WHITE);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 100), 1));
+        return btn;
+    }
+
+    // --- THE FIX 2: A helper method to safely switch turns and tick down cooldowns! ---
+    private void advanceTurn() {
+        isPlayer1Turn = !isPlayer1Turn;
+
         Entity activePlayer = isPlayer1Turn ? player1 : player2;
-
-        logMessage("\n--- " + activePlayer.getName().toUpperCase() + "'S TURN ---");
-
         for (Skill skill : activePlayer.getSkills()) {
             skill.reduceCooldown();
         }
-
-        topHealthBar.setValue(player2.getCurrentHealth());
-        bottomHealthBar.setValue(player1.getCurrentHealth());
-        bottomHealthBar.setString("HP: " + player1.getCurrentHealth() + "/" + player1.getMaxHealth());
-        bottomStatsLabel.setText("Mana: " + player1.getCurrentMana());
-
-        skillsPanel.removeAll();
-
-        for (Skill skill : activePlayer.getSkills()) {
-            JButton skillBtn = new JButton();
-            skillBtn.setBackground(Color.BLACK);
-            skillBtn.setForeground(Color.WHITE);
-            skillBtn.setFont(new Font("Monospaced", Font.BOLD, 14));
-            skillBtn.setFocusPainted(false);
-            skillBtn.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
-
-            if (skill.isReady()) {
-                skillBtn.setText(skill.getName());
-                skillBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                skillBtn.addActionListener(e -> executeSkill(skill, activePlayer));
-            } else {
-                skillBtn.setText(skill.getName() + " (CD: " + skill.getCooldown() + ")");
-                skillBtn.setForeground(Color.GRAY);
-                skillBtn.setEnabled(false);
-            }
-            skillsPanel.add(skillBtn);
-        }
-
-        skillsPanel.revalidate();
-        skillsPanel.repaint();
     }
 
-    private void executeSkill(Skill skill, Entity activePlayer) {
-        Entity targetPlayer = isPlayer1Turn ? player2 : player1;
+    private void startIdleTimer() {
+        if (idleTimer != null) idleTimer.stop();
 
-        skill.apply(activePlayer, targetPlayer, this);
+        idleTimer = new javax.swing.Timer(IDLE_SECONDS * 1000, e -> {
+            Entity idle = isPlayer1Turn ? player1 : player2;
+            logMessage("⏰ " + idle.getName() + " was too slow!");
+            applyDamage(idle, IDLE_HP_PENALTY);
+
+            advanceTurn(); // Use the new turn switcher!
+
+            logMessage("⚡ Turn skipped!");
+
+            updateUI();
+            checkGameOver();
+
+            if(!player1.isDead() && !player2.isDead()) {
+                if (!isPlayer1Turn && isAiMatch) {
+                    Timer aiTimer = new Timer(1000, ev -> executeAiTurn());
+                    aiTimer.setRepeats(false);
+                    aiTimer.start();
+                } else {
+                    startIdleTimer();
+                }
+            }
+        });
+
+        idleTimer.setRepeats(false);
+        idleTimer.start();
+    }
+
+    private void stopIdleTimer() {
+        if (idleTimer != null) { idleTimer.stop(); idleTimer = null; }
+    }
+
+    private void applyDamage(Entity e, int amount) {
+        try {
+            java.lang.reflect.Method m = e.getClass().getMethod("takeDamage", int.class);
+            m.invoke(e, amount);
+        } catch (Exception ex1) {
+            try {
+                java.lang.reflect.Field f = findField(e.getClass(), "currentHealth");
+                f.setAccessible(true);
+                int cur = (int) f.get(e);
+                f.set(e, Math.max(0, cur - amount));
+            } catch (Exception ex2) { }
+        }
+    }
+
+    private void applyManaCost(Entity e, int cost) {
+        try {
+            java.lang.reflect.Method m = e.getClass().getMethod("setCurrentMana", int.class);
+            m.invoke(e, Math.max(0, e.getCurrentMana() - cost));
+        } catch (Exception ex1) {
+            try {
+                java.lang.reflect.Field f = findField(e.getClass(), "currentMana");
+                f.setAccessible(true);
+                int cur = (int) f.get(e);
+                f.set(e, Math.max(0, cur - cost));
+            } catch (Exception ex2) { }
+        }
+    }
+
+    private void applyManaRegen(Entity e, int amount) {
+        try {
+            java.lang.reflect.Method m = e.getClass().getMethod("setCurrentMana", int.class);
+            m.invoke(e, Math.min(e.getMaxMana(), e.getCurrentMana() + amount));
+        } catch (Exception ex1) {
+            try {
+                java.lang.reflect.Field f = findField(e.getClass(), "currentMana");
+                f.setAccessible(true);
+                int cur = (int) f.get(e);
+                int max = e.getMaxMana();
+                f.set(e, Math.min(max, cur + amount));
+            } catch (Exception ex2) { }
+        }
+    }
+
+    private java.lang.reflect.Field findField(Class<?> cls, String name) throws NoSuchFieldException {
+        while (cls != null) {
+            try { return cls.getDeclaredField(name); }
+            catch (NoSuchFieldException ex) { cls = cls.getSuperclass(); }
+        }
+        throw new NoSuchFieldException(name);
+    }
+
+    private void handleManaOnAttack(Entity atk) {
+        if (atk.getCurrentMana() > 0) {
+            applyManaCost(atk, SKILL_MANA_COST);
+        } else {
+            int half = manaHalfPoints.getOrDefault(atk, 0) + 3;
+            int fullMana = half / 2;
+            int remainder = half % 2;
+            manaHalfPoints.put(atk, remainder);
+            if (fullMana > 0) {
+                applyManaRegen(atk, fullMana);
+                logMessage("✨ " + atk.getName() + " recovered " + fullMana + " mana!");
+            }
+        }
+    }
+
+    private void useSkill(int index, boolean isP1) {
+        if (isPlayer1Turn != isP1) return;
+
+        Entity atk = isP1 ? player1 : player2;
+        Entity tgt = isP1 ? player2 : player1;
+
+        Skill skill = atk.getSkills().get(index);
+        if (!skill.isReady()) return;
+
+        handleManaOnAttack(atk);
+
+        skill.apply(atk, tgt, this::logMessage);
         skill.resetCooldown();
 
-        if (targetPlayer.isDead()) {
-            updateHealthBarsFinal();
-            logMessage("\n*** K.O.! " + targetPlayer.getName() + " has been defeated! ***");
-            logMessage("*** WINNER: " + activePlayer.getName().toUpperCase() + " ***");
+        startIdleTimer();
 
-            skillsPanel.removeAll();
+        if (!tgt.isDead()) {
+            advanceTurn(); // Use the new turn switcher!
+            updateUI();
 
-            JButton returnBtn = new JButton("CONTINUE");
-            returnBtn.setBackground(new Color(50, 200, 50));
-            returnBtn.setForeground(Color.WHITE);
-            returnBtn.setFont(new Font("Monospaced", Font.BOLD, 18));
-            returnBtn.setFocusPainted(false);
-            returnBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-            returnBtn.addActionListener(e -> routeToNextScreen());
-
-            skillsPanel.add(returnBtn);
-
-            skillsPanel.revalidate();
-            skillsPanel.repaint();
-            return;
+            if (!isPlayer1Turn && isAiMatch) {
+                Timer aiTimer = new Timer(1000, ev -> executeAiTurn());
+                aiTimer.setRepeats(false);
+                aiTimer.start();
+            }
+        } else {
+            updateUI();
         }
-
-        isPlayer1Turn = !isPlayer1Turn;
-        updateTurnUI();
     }
 
-    private void updateHealthBarsFinal() {
-        topHealthBar.setValue(player2.getCurrentHealth());
-        bottomHealthBar.setValue(player1.getCurrentHealth());
-        bottomHealthBar.setString("HP: " + player1.getCurrentHealth() + "/" + player1.getMaxHealth());
+    private void executeAiTurn() {
+        if (player2.isDead() || player1.isDead()) return;
+
+        stopIdleTimer();
+
+        List<Integer> readySkills = new ArrayList<>();
+        for (int i = 0; i < 3; i++) {
+            if (player2.getSkills().get(i).isReady()) {
+                readySkills.add(i);
+            }
+        }
+
+        if (readySkills.isEmpty()) {
+            logMessage("🤖 " + player2.getName() + " has no ready skills — skipping turn.");
+        } else {
+            int randomSkillIndex = readySkills.get(new Random().nextInt(readySkills.size()));
+            Skill skill = player2.getSkills().get(randomSkillIndex);
+
+            handleManaOnAttack(player2);
+            skill.apply(player2, player1, this::logMessage);
+            skill.resetCooldown();
+            logMessage("▶  " + player2.getName() + " used " + skill.getName() + "!");
+        }
+
+        if (!player1.isDead() && !player2.isDead()) {
+            advanceTurn(); // Use the new turn switcher!
+            startIdleTimer();
+        }
+
+        updateUI();
+    }
+
+    private void updateUI() {
+        String turnName = isPlayer1Turn ? player1.getName() : player2.getName();
+        setTitle("⚔ " + turnName + "'s Turn");
+
+        lblTurnIndicator.setText(player1.getName() + "  VS  " + player2.getName() + (isAiMatch ? "  [AI]" : ""));
+        lblTurnIndicator.setForeground(isPlayer1Turn ? P1_COLOR : P2_COLOR);
+        lblRound.setText("ROUND  " + round + "  /  " + MAX_ROUNDS);
+
+        updateBar(pbHealthP1, player1.getCurrentHealth(), player1.getMaxHealth(), "HP");
+        updateBar(pbManaP1,   player1.getCurrentMana(),   player1.getMaxMana(),   "MP");
+        updateBar(pbHealthP2, player2.getCurrentHealth(), player2.getMaxHealth(), "HP");
+        updateBar(pbManaP2,   player2.getCurrentMana(),   player2.getMaxMana(),   "MP");
+
+        updateSkills();
+        checkGameOver();
+    }
+
+    private void updateBar(JProgressBar bar, int current, int max, String label) {
+        bar.setMaximum(max);
+        bar.setValue(current);
+        bar.setString(label + ": " + current + " / " + max);
+    }
+
+    private void updateSkills() {
+        for (int i = 0; i < 3; i++) {
+            Skill s1 = player1.getSkills().get(i);
+            boolean p1Ready = s1.isReady() && isPlayer1Turn;
+            skillButtonsP1[i].setText(s1.getName() + (s1.isReady() ? "" : " [CD]"));
+            skillButtonsP1[i].setEnabled(p1Ready);
+            skillButtonsP1[i].setBackground(p1Ready ? new Color(20, 60, 90) : BTN_DISABLED);
+
+            Skill s2 = player2.getSkills().get(i);
+            boolean p2Ready = s2.isReady() && !isPlayer1Turn && !isAiMatch;
+            skillButtonsP2[i].setText(s2.getName() + (s2.isReady() ? "" : " [CD]"));
+            skillButtonsP2[i].setEnabled(p2Ready);
+            skillButtonsP2[i].setBackground((s2.isReady() && !isPlayer1Turn) ? new Color(80, 20, 20) : BTN_DISABLED);
+        }
+    }
+
+    private void checkGameOver() {
+        if (!player1.isDead() && !player2.isDead()) return;
+
+        stopIdleTimer();
+
+        if (player1.isDead()) p2Wins++; else p1Wins++;
+        logMessage("⚡ Round " + round + " over! Score → " + player1.getName() + " " + p1Wins + " : " + p2Wins + " " + player2.getName());
+
+        if (p1Wins == 2 || p2Wins == 2 || round == MAX_ROUNDS) {
+            String winner = p1Wins > p2Wins ? player1.getName() : player2.getName();
+            JOptionPane.showMessageDialog(this,
+                    "🏆 " + winner + " WINS the match!  (" + p1Wins + " - " + p2Wins + ")",
+                    "Battle Over", JOptionPane.INFORMATION_MESSAGE);
+            routeToNextScreen();
+        } else {
+            round++;
+            startNextRound();
+        }
+    }
+
+    private void startNextRound() {
+        player1 = createFresh(player1.getName());
+        player2 = createFresh(player2.getName());
+        manaHalfPoints.clear();
+        isPlayer1Turn = true;
+        setCharacterImages();
+        logMessage("🔥 ROUND " + round + " — FIGHT!");
+        updateUI();
+        startIdleTimer();
+    }
+
+    private Entity createFresh(String name) {
+        switch (name) {
+            case "Happy Mark":   return new com.ror.gamemodel.Playable.Mark();
+            case "Happy Ted":    return new com.ror.gamemodel.Playable.Ted();
+            case "Happy Ashley": return new com.ror.gamemodel.Playable.Ashley();
+            case "Happy Clent":  return new com.ror.gamemodel.Playable.Clent();
+            case "Happy Den":    return new com.ror.gamemodel.Playable.Den();
+            case "Happy Trone": return new com.ror.gamemodel.Playable.Trone();
+            case "Happy Vince":  return new com.ror.gamemodel.Playable.Vince();
+            case "Happy Zack":   return new com.ror.gamemodel.Playable.Zack();
+            default:             return new com.ror.gamemodel.Playable.Mark();
+        }
+    }
+
+    private void setCharacterImages() {
+        SwingUtilities.invokeLater(() -> {
+            loadImage(lblPlayer1, player1.getName());
+            loadImage(lblPlayer2, player2.getName());
+        });
+    }
+
+    private void loadImage(JLabel label, String name) {
+        try {
+            String key = name.toLowerCase().replace("happy ", "");
+            java.net.URL url = null;
+
+            url = getClass().getResource("/images/characters/" + key + "/" + key + ".gif");
+
+            if (url == null)
+                url = getClass().getResource("/images/characters/" + key + "/" + key + ".png");
+
+            if (url == null)
+                url = getClass().getResource("/images/characters/" + key + "/" + key + ".jpg");
+
+            if (url == null) {
+                String capKey = Character.toUpperCase(key.charAt(0)) + key.substring(1);
+                url = getClass().getResource("/images/characters/" + key + "/" + capKey + ".png");
+            }
+
+            if (url == null) {
+                label.setText(name);
+                label.setIcon(null);
+                return;
+            }
+
+            ImageIcon icon = new ImageIcon(url);
+
+            if (url.toString().endsWith(".gif")) {
+                label.setIcon(icon);
+            } else {
+                int labelW = label.getWidth()  > 10 ? label.getWidth()  : 300;
+                int labelH = label.getHeight() > 10 ? label.getHeight() : 220;
+
+                double scale = Math.min(
+                        (double) labelW / icon.getIconWidth(),
+                        (double) labelH / icon.getIconHeight()
+                );
+
+                int dW = (int) (icon.getIconWidth() * scale);
+                int dH = (int) (icon.getIconHeight() * scale);
+
+                Image scaled = icon.getImage().getScaledInstance(dW, dH, Image.SCALE_SMOOTH);
+                label.setIcon(new ImageIcon(scaled));
+            }
+
+            label.setText("");
+            label.setHorizontalAlignment(SwingConstants.CENTER);
+            label.setVerticalAlignment(SwingConstants.CENTER);
+            label.setOpaque(false);
+
+        } catch (Exception e) {
+            label.setText("?");
+            label.setIcon(null);
+        }
     }
 
     private void routeToNextScreen() {
+        stopIdleTimer();
         dispose();
 
         if ("Arcade".equalsIgnoreCase(mode)) {
             player1.heal(player1.getMaxHealth());
+            applyManaRegen(player1, player1.getMaxMana());
+
             new ArcadeFrame(player1, player2).setVisible(true);
+
         } else if ("PvP".equalsIgnoreCase(mode) || "PvAI".equalsIgnoreCase(mode)) {
             new HeroSelection("Player", mode, "Normal").setVisible(true);
         } else {
@@ -258,16 +620,20 @@ public class GuiBattleArena extends JFrame implements BattleView {
     }
 
     @Override
-    public void logMessage(String message) {
-        combatLog.append(message + "\n");
-        combatLog.setCaretPosition(combatLog.getDocument().getLength());
+    public void logMessage(String msg) {
+        SwingUtilities.invokeLater(() -> {
+            txtBattleLog.append(msg + "\n");
+            txtBattleLog.setCaretPosition(txtBattleLog.getDocument().getLength());
+        });
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            Entity p1 = new Mark();
-            Entity p2 = new Ted();
-            new GuiBattleArena(p1, p2, "Test").setVisible(true);
-        });
+        SwingUtilities.invokeLater(() ->
+                new GuiBattleArena(
+                        new com.ror.gamemodel.Playable.Mark(),
+                        new com.ror.gamemodel.Playable.Ted(),
+                        "Arcade"
+                ).setVisible(true)
+        );
     }
 }
