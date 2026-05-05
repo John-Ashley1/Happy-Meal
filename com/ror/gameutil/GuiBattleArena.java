@@ -504,14 +504,53 @@ public class GuiBattleArena extends JFrame implements BattleView {
         logMessage("⚡ Round " + round + " over! Score → " + player1.getName() + " " + p1Wins + " : " + p2Wins + " " + player2.getName());
 
         if (p1Wins == 2 || p2Wins == 2 || round == MAX_ROUNDS) {
-            String winner = p1Wins > p2Wins ? player1.getName() : player2.getName();
-            JOptionPane.showMessageDialog(this,
-                    "🏆 " + winner + " WINS the match!  (" + p1Wins + " - " + p2Wins + ")",
-                    "Battle Over", JOptionPane.INFORMATION_MESSAGE);
-            routeToNextScreen();
+            boolean player1Won = p1Wins > p2Wins;
+
+            // --- NEW: Intercept defeat ONLY in Arcade Mode! ---
+            if ("Arcade".equalsIgnoreCase(mode) && !player1Won) {
+                handleArcadeDefeat();
+            } else {
+                // Normal win/loss popup for all other modes (or if Player 1 wins Arcade)
+                String winner = player1Won ? player1.getName() : player2.getName();
+                JOptionPane.showMessageDialog(this,
+                        "🏆 " + winner + " WINS the match!  (" + p1Wins + " - " + p2Wins + ")",
+                        "Battle Over", JOptionPane.INFORMATION_MESSAGE);
+                routeToNextScreen();
+            }
         } else {
             round++;
             startNextRound();
+        }
+    }
+
+    // --- NEW: Dedicated Defeat Popup Logic ---
+    private void handleArcadeDefeat() {
+        stopIdleTimer();
+
+        // Define the buttons for our popup
+        Object[] options = {"Retry", "Quit"};
+
+        // Show the Option Dialog
+        int choice = JOptionPane.showOptionDialog(this,
+                "You were defeated by " + player2.getName(),
+                "DEFEATED",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.ERROR_MESSAGE, // Gives it a dramatic 'Error' icon
+                null,
+                options,
+                options[0] // Makes 'Retry' the default selected button
+        );
+
+        dispose(); // Close the Battle Arena window
+
+        if (choice == JOptionPane.YES_OPTION) {
+            // RETRY: Heal the player up and throw them back into the Arcade room!
+            player1.heal(player1.getMaxHealth());
+            applyManaRegen(player1, player1.getMaxMana());
+            new ArcadeFrame(player1, player2).setVisible(true);
+        } else {
+            // QUIT: Return directly to the Intro Screen
+            new IntroScreen().setVisible(true);
         }
     }
 
@@ -533,16 +572,14 @@ public class GuiBattleArena extends JFrame implements BattleView {
             case "Happy Ashley": return new com.ror.gamemodel.Playable.Ashley();
             case "Happy Clent":  return new com.ror.gamemodel.Playable.Clent();
             case "Happy Den":    return new com.ror.gamemodel.Playable.Den();
-            case "Happy Trone": return new com.ror.gamemodel.Playable.Trone();
+            case "Happy Trone":  return new com.ror.gamemodel.Playable.Trone();
             case "Happy Vince":  return new com.ror.gamemodel.Playable.Vince();
             case "Happy Zack":   return new com.ror.gamemodel.Playable.Zack();
             default:             return new com.ror.gamemodel.Playable.Mark();
         }
     }
 
-    // --- ⚠️ THE FIX: EXACT FRAME COUNTS BASED ON YOUR SPRITESHEETS! ⚠️ ---
-    // Note: I matched the counts based on standard RPG archetypes and your uploaded images.
-    // If the Orc (10 frames) is actually 'Zack' instead of 'Clent', just swap their numbers below!
+    // --- THE FIX: EXACT FRAME COUNTS BASED ON YOUR SPRITESHEETS! ---
     private int getFrameCount(String characterKey) {
         switch (characterKey) {
             case "ashley": return 7;
