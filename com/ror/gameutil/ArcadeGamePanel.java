@@ -85,7 +85,7 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         // --- NEW: Initialize the Story Dialogue! ---
         String[] story = {
-                "You have entered the dungeon, " + currentHero.getName() + "...",
+                "You have entered the arena, " + currentHero.getName() + "...",
                 "The air is cold, and the shadows hide your enemies.",
                 "Beyond that door lies the Joy Arena.",
                 "Defeat the enemy ahead to prove your worth."

@@ -545,14 +545,14 @@ public class GuiBattleArena extends JFrame implements BattleView {
     // If the Orc (10 frames) is actually 'Zack' instead of 'Clent', just swap their numbers below!
     private int getFrameCount(String characterKey) {
         switch (characterKey) {
-            case "ashley": return 7;  // Dark cloak, green magic (Confirmed)
-            case "mark":   return 10; // Assuming Dark armor, purple sword
-            case "ted":    return 6;  // Assuming Knight with red/grey armor and sword
-            case "clent":  return 10; // Assuming Orc with spear
-            case "den":    return 4;  // Assuming Small green goblin
-            case "trone":  return 4;  // Assuming Stone statue with hammer
-            case "vince":  return 10; // Assuming Purple-cloaked mage
-            case "zack":   return 10; // Assuming Red-caped crossbowman
+            case "ashley": return 7;
+            case "mark":   return 10;
+            case "ted":    return 4;  // FIXED: Ted is the stone statue with 4 frames!
+            case "clent":  return 10;
+            case "den":    return 4;
+            case "trone":  return 4;
+            case "vince":  return 10;
+            case "zack":   return 10;
             default:       return 1;
         }
     }
