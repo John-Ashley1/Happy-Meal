@@ -7,6 +7,7 @@ import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl; // Added for volume control
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -92,22 +93,20 @@ public class GuiBattleArena extends JFrame implements BattleView {
                 battleMusic = AudioSystem.getClip();
                 battleMusic.open(audioIn);
 
-                // --- NEW: VOLUME CONTROL ---
-                // Get the volume control from the clip
-                javax.sound.sampled.FloatControl gainControl =
-                        (javax.sound.sampled.FloatControl) battleMusic.getControl(javax.sound.sampled.FloatControl.Type.MASTER_GAIN);
+                // --- THE FIX: AUDIBLE VOLUME CONTROL ---
+                FloatControl gainControl = (FloatControl) battleMusic.getControl(FloatControl.Type.MASTER_GAIN);
 
-                // Reduce volume by 20 decibels (Adjust this number to make it louder/quieter!)
-                gainControl.setValue(-40.0f);
+                // Changed from -40.0f to -10.0f so you can actually hear it!
+                gainControl.setValue(-20.0f);
                 // ---------------------------
 
                 battleMusic.loop(Clip.LOOP_CONTINUOUSLY);
                 battleMusic.start();
             } else {
-                System.out.println("Could not find battle music file!");
+                System.err.println("CRITICAL: Could not find battle music file at /images/BGM/fightbg.wav");
             }
         } catch (Exception e) {
-            System.out.println("Error playing battle music: " + e.getMessage());
+            System.err.println("Error playing battle music: " + e.getMessage());
         }
     }
 
@@ -617,17 +616,16 @@ public class GuiBattleArena extends JFrame implements BattleView {
         }
     }
 
-    // --- THE FIX: EXACT FRAME COUNTS BASED ON YOUR SPRITESHEETS! ---
     private int getFrameCount(String characterKey) {
         switch (characterKey) {
-            case "ashley": return 7;  // Hooded rogue with dagger (8 frames)
-            case "mark":   return 10; // Dark armor, purple sword (10 frames)
-            case "ted":    return 4;  // Stone statue with hammer (4 frames)
-            case "clent":  return 5; // Orc with spear (10 frames)
-            case "den":    return 10; // Purple hood goblin with fire (10 frames)
-            case "trone":  return 10;  // Small green goblin walking (4 frames)
-            case "vince":  return 9;  // Silver/Red Knight with sword (6 frames)
-            case "zack":   return 4; // Red-caped crossbowman (10 frames)
+            case "ashley": return 7;
+            case "mark":   return 10;
+            case "ted":    return 4;
+            case "clent":  return 5;
+            case "den":    return 10;
+            case "trone":  return 10;
+            case "vince":  return 9;
+            case "zack":   return 4;
             default:       return 1;
         }
     }
