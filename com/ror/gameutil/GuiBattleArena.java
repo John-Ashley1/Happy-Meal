@@ -4,6 +4,9 @@ import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Skill;
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -37,6 +40,9 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private static final int  IDLE_SECONDS    = 10;
     private static final int  IDLE_HP_PENALTY = 100;
     private static final int  SKILL_MANA_COST = 2;
+
+    // --- AUDIO CLIP ---
+    private Clip battleMusic;
 
     private java.util.Map<Entity, Integer> manaHalfPoints = new java.util.HashMap<>();
 
@@ -72,6 +78,44 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
         logMessage("⚔  BATTLE START!  " + p1.getName() + "  vs  " + p2.getName() + (isAiMatch ? " [AI]" : ""));
         startIdleTimer();
+
+        // --- START THE MUSIC! ---
+        playBattleMusic();
+    }
+
+    // --- AUDIO METHODS ---
+    private void playBattleMusic() {
+        try {
+            java.net.URL url = getClass().getResource("/images/BGM/fightbg.wav");
+            if (url != null) {
+                AudioInputStream audioIn = AudioSystem.getAudioInputStream(url);
+                battleMusic = AudioSystem.getClip();
+                battleMusic.open(audioIn);
+
+                // --- NEW: VOLUME CONTROL ---
+                // Get the volume control from the clip
+                javax.sound.sampled.FloatControl gainControl =
+                        (javax.sound.sampled.FloatControl) battleMusic.getControl(javax.sound.sampled.FloatControl.Type.MASTER_GAIN);
+
+                // Reduce volume by 20 decibels (Adjust this number to make it louder/quieter!)
+                gainControl.setValue(-40.0f);
+                // ---------------------------
+
+                battleMusic.loop(Clip.LOOP_CONTINUOUSLY);
+                battleMusic.start();
+            } else {
+                System.out.println("Could not find battle music file!");
+            }
+        } catch (Exception e) {
+            System.out.println("Error playing battle music: " + e.getMessage());
+        }
+    }
+
+    private void stopBattleMusic() {
+        if (battleMusic != null && battleMusic.isRunning()) {
+            battleMusic.stop();
+            battleMusic.close();
+        }
     }
 
     private void initComponents() {
@@ -98,6 +142,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
                         () -> {},
                         () -> {
                             stopIdleTimer();
+                            stopBattleMusic(); // Stop music on exit!
                             new IntroScreen().setVisible(true);
                             dispose();
                         }
@@ -506,11 +551,9 @@ public class GuiBattleArena extends JFrame implements BattleView {
         if (p1Wins == 2 || p2Wins == 2 || round == MAX_ROUNDS) {
             boolean player1Won = p1Wins > p2Wins;
 
-            // --- NEW: Intercept defeat ONLY in Arcade Mode! ---
             if ("Arcade".equalsIgnoreCase(mode) && !player1Won) {
                 handleArcadeDefeat();
             } else {
-                // Normal win/loss popup for all other modes (or if Player 1 wins Arcade)
                 String winner = player1Won ? player1.getName() : player2.getName();
                 JOptionPane.showMessageDialog(this,
                         "🏆 " + winner + " WINS the match!  (" + p1Wins + " - " + p2Wins + ")",
@@ -523,33 +566,28 @@ public class GuiBattleArena extends JFrame implements BattleView {
         }
     }
 
-    // --- NEW: Dedicated Defeat Popup Logic ---
     private void handleArcadeDefeat() {
         stopIdleTimer();
+        stopBattleMusic(); // Stop music on defeat popup
 
-        // Define the buttons for our popup
         Object[] options = {"Retry", "Quit"};
-
-        // Show the Option Dialog
         int choice = JOptionPane.showOptionDialog(this,
-                "You were defeated by " + player2.getName(),
+                "You were defeated by " + player2.getName() + "!\nWhat will you do?",
                 "DEFEATED",
                 JOptionPane.YES_NO_OPTION,
-                JOptionPane.ERROR_MESSAGE, // Gives it a dramatic 'Error' icon
+                JOptionPane.ERROR_MESSAGE,
                 null,
                 options,
-                options[0] // Makes 'Retry' the default selected button
+                options[0]
         );
 
-        dispose(); // Close the Battle Arena window
+        dispose();
 
         if (choice == JOptionPane.YES_OPTION) {
-            // RETRY: Heal the player up and throw them back into the Arcade room!
             player1.heal(player1.getMaxHealth());
             applyManaRegen(player1, player1.getMaxMana());
             new ArcadeFrame(player1, player2).setVisible(true);
         } else {
-            // QUIT: Return directly to the Intro Screen
             new IntroScreen().setVisible(true);
         }
     }
@@ -582,14 +620,14 @@ public class GuiBattleArena extends JFrame implements BattleView {
     // --- THE FIX: EXACT FRAME COUNTS BASED ON YOUR SPRITESHEETS! ---
     private int getFrameCount(String characterKey) {
         switch (characterKey) {
-            case "ashley": return 7;
-            case "mark":   return 10;
-            case "ted":    return 4;  // FIXED: Ted is the stone statue with 4 frames!
-            case "clent":  return 10;
-            case "den":    return 4;
-            case "trone":  return 4;
-            case "vince":  return 10;
-            case "zack":   return 10;
+            case "ashley": return 7;  // Hooded rogue with dagger (8 frames)
+            case "mark":   return 10; // Dark armor, purple sword (10 frames)
+            case "ted":    return 4;  // Stone statue with hammer (4 frames)
+            case "clent":  return 5; // Orc with spear (10 frames)
+            case "den":    return 10; // Purple hood goblin with fire (10 frames)
+            case "trone":  return 10;  // Small green goblin walking (4 frames)
+            case "vince":  return 9;  // Silver/Red Knight with sword (6 frames)
+            case "zack":   return 4; // Red-caped crossbowman (10 frames)
             default:       return 1;
         }
     }
@@ -614,16 +652,9 @@ public class GuiBattleArena extends JFrame implements BattleView {
             if (assetUrl != null) {
                 BufferedImage spriteSheet = ImageIO.read(assetUrl);
 
-                // Use the exact calculated frames!
                 int numFrames = getFrameCount(key);
-
                 int frameW = spriteSheet.getWidth() / numFrames;
                 int frameH = spriteSheet.getHeight();
-
-                if (spriteSheet.getWidth() % numFrames != 0) {
-                    System.out.println("WARNING: " + capKey + "_Asset.png width " + spriteSheet.getWidth() +
-                            " is not perfectly divisible by " + numFrames + ".");
-                }
 
                 int labelW = label.getWidth() > 10 ? label.getWidth() : 300;
                 int labelH = label.getHeight() > 10 ? label.getHeight() : 220;
@@ -697,14 +728,13 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
     private void routeToNextScreen() {
         stopIdleTimer();
+        stopBattleMusic(); // Stop music when returning to menu or advancing!
         dispose();
 
         if ("Arcade".equalsIgnoreCase(mode)) {
             player1.heal(player1.getMaxHealth());
             applyManaRegen(player1, player1.getMaxMana());
-
             new ArcadeFrame(player1, player2).setVisible(true);
-
         } else if ("PvP".equalsIgnoreCase(mode) || "PvAI".equalsIgnoreCase(mode)) {
             new HeroSelection("Player", mode, "Normal").setVisible(true);
         } else {
