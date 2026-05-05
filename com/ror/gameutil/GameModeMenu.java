@@ -20,13 +20,25 @@ public class GameModeMenu extends JFrame implements ActionListener {
 
     public GameModeMenu(String name) {
         this.playerName = name;
-        this.sound = null;
+
+        // --- FIX: Create a new SoundManager if we didn't bring one! ---
+        this.sound = new SoundManager();
+
+        // NOTE: Uncomment the line below and change "playMusic" to whatever method your SoundManager uses!
+        // this.sound.playMusic("/images/BGM/bgm_main.wav");
+
         initUI();
     }
 
     public GameModeMenu(String name, SoundManager sound) {
         this.playerName = name;
-        this.sound = sound;
+
+        // --- FIX: If sound is null, create a new one. Otherwise, keep using the current one. ---
+        this.sound = (sound != null) ? sound : new SoundManager();
+
+        // NOTE: Uncomment the line below and change "playMusic" to whatever method your SoundManager uses!
+        // this.sound.playMusic("/images/BGM/bgm_main.wav");
+
         initUI();
     }
 
@@ -136,11 +148,8 @@ public class GameModeMenu extends JFrame implements ActionListener {
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setContentAreaFilled(false);
-
-        // --- THE FIX: Kill Swing's default border ---
         btn.setBorderPainted(false);
         btn.setBorder(null);
-
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -233,14 +242,21 @@ public class GameModeMenu extends JFrame implements ActionListener {
 
         } else if (e.getSource() == arcade) {
 
-            // --- NEW: Bypass Hero Selection and start the Story directly! ---
+            if (sound != null) {
+                sound.stop();
+            }
+
             com.ror.gamemodel.Entity defaultHero = new com.ror.gamemodel.Playable.Mark();
             com.ror.gamemodel.Entity firstEnemy = new com.ror.gamemodel.Playable.Ted();
 
             new com.ror.gameutil.StoryCutscene(defaultHero, firstEnemy).setVisible(true);
             dispose();
 
-            return; // Stops the code here so it doesn't open the HeroSelection menu below!
+            return;
+        }
+
+        if (sound != null) {
+            sound.stop();
         }
 
         new HeroSelection(playerName, selectedMode, difficulty, sound).setVisible(true);
