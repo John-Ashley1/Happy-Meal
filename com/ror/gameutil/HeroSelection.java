@@ -213,7 +213,8 @@ public class HeroSelection extends JFrame implements ActionListener {
 
         if (sound != null) sound.stop();
 
-        new com.ror.gameutil.ArcadeFrame(
+        // Launch the Cinematic Intro instead of the ArcadeFrame!
+        new StoryCutscene(
                 createHeroEntity(player1Hero),
                 createHeroEntity(player2Hero)
         ).setVisible(true);

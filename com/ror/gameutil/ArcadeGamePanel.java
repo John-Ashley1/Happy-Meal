@@ -20,6 +20,10 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     private final int FPS = 60;
     private volatile boolean running = false;
 
+    // --- NEW: Dialogue System Variables ---
+    private DialogueOverlay dialogue;
+    private boolean isDialogueActive = true;
+
     // --- TILEMAP VARIABLES ---
     private BufferedImage floorTile;
     private BufferedImage tlTop, tmTop, trTop, trbTop, tlbTop, tmbTop;
@@ -66,7 +70,6 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         this.currentHero = selectedHero;
 
-        // --- THE MISSING ORC LOGIC IS BACK! ---
         String animationFolder = "soldier";
         String spritePrefix = "Soldier";
 
@@ -79,6 +82,15 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
         }
 
         player = new Player(animationFolder, spritePrefix, TILE_SIZE);
+
+        // --- NEW: Initialize the Story Dialogue! ---
+        String[] story = {
+                "You have entered the dungeon, " + currentHero.getName() + "...",
+                "The air is cold, and the shadows hide your enemies.",
+                "Beyond that door lies the Joy Arena.",
+                "Defeat the enemy ahead to prove your worth."
+        };
+        dialogue = new DialogueOverlay(story);
     }
 
     private void loadSprites() {
@@ -161,6 +173,9 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private void update() {
+        // --- NEW: Freeze the game logic if the dialogue is active! ---
+        if (isDialogueActive) return;
+
         int cols = roomMap[0].length;
         int rows = roomMap.length;
 
@@ -248,18 +263,36 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         player.render(g2d, TILE_SIZE);
 
-        if (isNearDoor) {
+        if (isNearDoor && !isDialogueActive) {
             g2d.setFont(new Font("Monospaced", Font.BOLD, 8));
             g2d.setColor(Color.BLACK);
             g2d.drawString("[E] ENTER ARENA", (7 * TILE_SIZE) - 4, TILE_SIZE + 1);
             g2d.setColor(Color.YELLOW);
             g2d.drawString("[E] ENTER ARENA", (7 * TILE_SIZE) - 5, TILE_SIZE);
         }
+
+        // --- NEW: Draw the dialogue box on top of everything! ---
+        if (isDialogueActive) {
+            // Because graphics are scaled by 3.0, we divide our actual 816x624 window by 3
+            dialogue.render(g2d, 272, 208);
+        }
     }
 
     @Override
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
+
+        // --- NEW: Intercept all inputs if dialogue is running ---
+        if (isDialogueActive) {
+            if (code == KeyEvent.VK_SPACE || code == KeyEvent.VK_ENTER) {
+                dialogue.advance();
+                if (dialogue.isFinished()) {
+                    isDialogueActive = false; // Unfreeze the game!
+                }
+            }
+            return; // Exit here so WASD doesn't move the player during the story
+        }
+
         if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) upPressed = true;
         if (code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) downPressed = true;
         if (code == KeyEvent.VK_A || code == KeyEvent.VK_LEFT) leftPressed = true;
@@ -273,7 +306,6 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
                 parentWindow.dispose();
 
                 Entity enemy = new Ted();
-                // --- FIXED: ADDED "Arcade" BACK IN SO IT COMPILES! ---
                 new GuiBattleArena(currentHero, enemy, "Arcade").setVisible(true);
             }
         }
@@ -300,6 +332,9 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
     @Override
     public void keyReleased(KeyEvent e) {
+        // Prevent keys from getting "stuck" if you were holding them when dialogue ended
+        if (isDialogueActive) return;
+
         int code = e.getKeyCode();
         if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) upPressed = false;
         if (code == KeyEvent.VK_S || code == KeyEvent.VK_DOWN) downPressed = false;
