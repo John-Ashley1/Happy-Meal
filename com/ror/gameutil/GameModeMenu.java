@@ -232,7 +232,15 @@ public class GameModeMenu extends JFrame implements ActionListener {
             if (difficulty == null) return;
 
         } else if (e.getSource() == arcade) {
-            selectedMode = "Arcade";
+
+            // --- NEW: Bypass Hero Selection and start the Story directly! ---
+            com.ror.gamemodel.Entity defaultHero = new com.ror.gamemodel.Playable.Mark();
+            com.ror.gamemodel.Entity firstEnemy = new com.ror.gamemodel.Playable.Ted();
+
+            new com.ror.gameutil.StoryCutscene(defaultHero, firstEnemy).setVisible(true);
+            dispose();
+
+            return; // Stops the code here so it doesn't open the HeroSelection menu below!
         }
 
         new HeroSelection(playerName, selectedMode, difficulty, sound).setVisible(true);
