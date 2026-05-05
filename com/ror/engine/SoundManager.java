@@ -9,24 +9,22 @@ public class SoundManager implements Runnable {
     URL[] soundURL = new URL[5];
     String action = "play";
 
-    // 🎵 ONLY ONE BGM
     public static final int BGM_MAIN = 0;
 
-    public SoundManager() {
+    public static SoundManager bgm;
 
+    public SoundManager() {
         soundURL[BGM_MAIN] = getClass().getResource("/images/BGM/bgm_main.wav");
     }
 
     public void setFile(int i) {
         try {
             if (clip != null) {
+                clip.stop();
                 clip.close();
             }
 
-            if (soundURL[i] == null) {
-                System.out.println("Sound not found!");
-                return;
-            }
+            if (soundURL[i] == null) return;
 
             AudioInputStream ais = AudioSystem.getAudioInputStream(soundURL[i]);
             clip = AudioSystem.getClip();
@@ -51,6 +49,19 @@ public class SoundManager implements Runnable {
         if (clip != null) {
             clip.stop();
         }
+    }
+
+    public boolean isPlaying() {
+        return clip != null && clip.isRunning();
+    }
+
+    public static SoundManager getBGM() {
+        if (bgm == null) {
+            bgm = new SoundManager();
+            bgm.setFile(BGM_MAIN);
+            bgm.loop();
+        }
+        return bgm;
     }
 
     @Override

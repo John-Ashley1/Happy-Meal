@@ -13,7 +13,6 @@ import java.util.*;
 
 public class HeroSelection extends JFrame implements ActionListener {
 
-    // ================= BUTTONS =================
     private final JButton mark, ted, den, ashley, vince, zack, clent, trone;
 
     private final JLabel instructionLabel;
@@ -29,14 +28,16 @@ public class HeroSelection extends JFrame implements ActionListener {
 
     private SoundManager sound;
 
-    // ✅ GLOBAL LOCK FIX
     private boolean selectionLocked = false;
 
-    // ================= CONSTRUCTOR =================
+    private Image background;
+
     public HeroSelection(String playerName, String mode, String difficulty) {
 
         this.mode = mode;
         this.difficulty = difficulty;
+
+        background = new ImageIcon(getClass().getResource("/images/BG/aboutbg.png")).getImage();
 
         setTitle("Hero Selection");
         setSize(1000, 720);
@@ -52,13 +53,19 @@ public class HeroSelection extends JFrame implements ActionListener {
         availableHeroes = new ArrayList<>(Arrays.asList(heroes));
 
         JPanel mainPanel = new JPanel(new BorderLayout(15, 15)) {
+
+            @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
 
+                if (background != null) {
+                    g2.drawImage(background, 0, 0, getWidth(), getHeight(), this);
+                }
+
                 GradientPaint gp = new GradientPaint(
-                        0, 0, new Color(10, 10, 20),
-                        0, getHeight(), new Color(40, 10, 50)
+                        0, 0, new Color(10, 10, 20, 180),
+                        0, getHeight(), new Color(40, 10, 50, 180)
                 );
 
                 g2.setPaint(gp);
@@ -69,7 +76,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         mainPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
         setContentPane(mainPanel);
 
-        // ================= TITLE =================
         JLabel title = new JLabel("HERO SELECTION", JLabel.CENTER);
         title.setFont(new Font("Monospaced", Font.BOLD, 32));
         title.setForeground(Color.YELLOW);
@@ -85,7 +91,6 @@ public class HeroSelection extends JFrame implements ActionListener {
 
         mainPanel.add(top, BorderLayout.NORTH);
 
-        // ================= HERO GRID =================
         JPanel grid = new JPanel(new GridLayout(2, 4, 10, 10));
         grid.setOpaque(false);
 
@@ -109,7 +114,6 @@ public class HeroSelection extends JFrame implements ActionListener {
 
         mainPanel.add(grid, BorderLayout.CENTER);
 
-        // ================= INFO PANEL =================
         heroInfoArea = new JTextArea();
         heroInfoArea.setEditable(false);
         heroInfoArea.setFont(new Font("Monospaced", Font.PLAIN, 13));
@@ -119,7 +123,6 @@ public class HeroSelection extends JFrame implements ActionListener {
 
         mainPanel.add(new JScrollPane(heroInfoArea), BorderLayout.EAST);
 
-        // ================= START BUTTON =================
         startButton = new JButton("START BATTLE");
         styleButton(startButton, new Color(220, 20, 60));
         startButton.setEnabled(false);
@@ -140,13 +143,11 @@ public class HeroSelection extends JFrame implements ActionListener {
         mainPanel.add(bottom, BorderLayout.SOUTH);
     }
 
-    // ================= SOUND CONSTRUCTOR =================
     public HeroSelection(String playerName, String mode, String difficulty, SoundManager sound) {
         this(playerName, mode, difficulty);
         this.sound = sound;
     }
 
-    // ================= ACTION =================
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -164,7 +165,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         }
     }
 
-    // ================= HERO BUTTON CREATION (FIXED ERROR HERE) =================
     private JButton createHeroButton(String imgPath) {
 
         JButton btn = new JButton();
@@ -178,7 +178,6 @@ public class HeroSelection extends JFrame implements ActionListener {
             Image img = icon.getImage().getScaledInstance(120, 120, Image.SCALE_SMOOTH);
             btn.setIcon(new ImageIcon(img));
         } catch (Exception e) {
-            // fallback if image missing
             btn.setText("NO IMG");
             btn.setForeground(Color.WHITE);
         }
@@ -187,7 +186,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         return btn;
     }
 
-    // ================= HERO MAP =================
     private String getHero(JButton btn) {
         if (btn == mark) return "Happy Mark";
         if (btn == ted) return "Happy Ted";
@@ -200,7 +198,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         return "";
     }
 
-    // ================= FULL HERO INFO =================
     private void showHeroInfo(String hero) {
 
         switch (hero) {
@@ -256,37 +253,29 @@ public class HeroSelection extends JFrame implements ActionListener {
 
             case "Happy Trone":
                 heroInfoArea.setText(
-                        "HAPPY TRONE\nVAMPIRE\nHP: 3000\n\n" +
+                        "HAPPY TRONE\nVAMPIRE\nHP: 2000 | MANA: 500\n\n" +
                                 "SKILLS:\n• Blood Spear\n• Blood Shield\n• Blood Explosion"
                 );
                 break;
         }
     }
 
-    // ================= PvP =================
     private void handlePvP(String hero, JButton btn) {
-
         if (player1Hero == null) {
             player1Hero = hero;
             btn.setEnabled(false);
             instructionLabel.setText("PLAYER 2 SELECT HERO");
-
         } else {
             player2Hero = hero;
             btn.setEnabled(false);
-
             instructionLabel.setText("READY TO START");
-
             selectionLocked = true;
             disableAllButtons();
         }
-
         checkStart();
     }
 
-    // ================= PvAI =================
     private void handlePvAI(String hero, JButton btn) {
-
         player1Hero = hero;
         btn.setEnabled(false);
 
@@ -294,16 +283,13 @@ public class HeroSelection extends JFrame implements ActionListener {
         player2Hero = availableHeroes.get(r.nextInt(availableHeroes.size()));
 
         instructionLabel.setText("READY TO START");
-
         selectionLocked = true;
         disableAllButtons();
 
         checkStart();
     }
 
-    // ================= Arcade =================
     private void handleArcade(String hero, JButton btn) {
-
         player1Hero = hero;
         btn.setEnabled(false);
 
@@ -311,7 +297,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         player2Hero = availableHeroes.get(r.nextInt(availableHeroes.size()));
 
         instructionLabel.setText("READY TO START");
-
         selectionLocked = true;
         disableAllButtons();
 
@@ -336,18 +321,10 @@ public class HeroSelection extends JFrame implements ActionListener {
     }
 
     private void launchBattleArena() {
-
-        if (sound != null) sound.stop();
-
-        new GuiBattleArena(
-                createHero(player1Hero),
-                createHero(player2Hero)
-        ).setVisible(true);
-
+        new GuiBattleArena(createHero(player1Hero), createHero(player2Hero)).setVisible(true);
         dispose();
     }
 
-    // ================= HERO FACTORY =================
     private Entity createHero(String name) {
         switch (name) {
             case "Happy Mark": return new Mark();
@@ -362,7 +339,6 @@ public class HeroSelection extends JFrame implements ActionListener {
         return new Mark();
     }
 
-    // ================= STYLE =================
     private void styleButton(JButton btn, Color base) {
 
         btn.setFont(new Font("Monospaced", Font.BOLD, 18));

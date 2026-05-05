@@ -1,5 +1,6 @@
 package com.ror.gameutil;
 
+import com.ror.engine.SoundManager;
 import com.ror.gamemodel.Entity;
 import com.ror.gamemodel.Skill;
 
@@ -8,11 +9,13 @@ import javax.swing.border.*;
 import java.awt.*;
 
 
+
 public class GuiBattleArenaAI extends JFrame implements BattleView {
 
     // ── battle entities ────────────────────────────────────────────────────
     private Entity player;          // human
-    private Entity ai;              // computer
+    private Entity ai;
+    private SoundManager sound;// computer
 
     // ── round tracking ─────────────────────────────────────────────────────
     private int playerWins = 0;
@@ -65,7 +68,7 @@ public class GuiBattleArenaAI extends JFrame implements BattleView {
     // ══════════════════════════════════════════════════════════════════════
 
 
-    public GuiBattleArenaAI(Entity player, Entity ai, String difficulty) {
+    public GuiBattleArenaAI(Entity player, Entity ai, String difficulty, SoundManager sound) {
         this.player         = player;
         this.ai             = ai;
         this.playerHeroName = player.getName();
@@ -73,6 +76,7 @@ public class GuiBattleArenaAI extends JFrame implements BattleView {
         this.difficulty     = AiDifficulty.from(difficulty);
         this.aiBrain        = new AiBrain(this.difficulty);
         this.AI_THINK_DELAY = (this.difficulty == AiDifficulty.EASY) ? 1200 : 800;
+        this.sound = sound;
 
         buildUI();
         setCharacterImages();
@@ -588,7 +592,9 @@ public class GuiBattleArenaAI extends JFrame implements BattleView {
     private void returnToMenu() {
         stopIdleTimer();
         dispose();
-        new GameModeMenu(player.getName(), null).setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+                    new GameModeMenu(player.getName(), null).setVisible(true);
+        });
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -633,12 +639,16 @@ public class GuiBattleArenaAI extends JFrame implements BattleView {
     // ══════════════════════════════════════════════════════════════════════
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() ->
-                new GuiBattleArenaAI(
-                        new com.ror.gamemodel.Playable.Mark(),
-                        new com.ror.gamemodel.Playable.Ted(),
-                        "Medium"
-                ).setVisible(true)
-        );
+        SwingUtilities.invokeLater(() -> {
+
+            SoundManager sound = new SoundManager(); // or null if not ready
+
+            new GuiBattleArenaAI(
+                    new com.ror.gamemodel.Playable.Mark(),
+                    new com.ror.gamemodel.Playable.Ted(),
+                    "Medium",
+                    sound
+            ).setVisible(true);
+        });
     }
 }

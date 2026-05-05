@@ -18,7 +18,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
 
     private SoundManager sound;
 
-    // ================= CONSTRUCTOR =================
     public HappyMealGame() {
 
         sound = new SoundManager();
@@ -33,7 +32,7 @@ public class HappyMealGame extends JFrame implements ActionListener {
         initUI();
     }
 
-    // ================= UI =================
+
     private void initUI() {
 
         setTitle("Player Registration");
@@ -79,7 +78,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
         Color arcadeGold = new Color(255, 215, 0);
         Color terminalGreen = new Color(50, 255, 50);
 
-        // ================= TITLE =================
         JLabel title = new JLabel("Welcome to the Happy Meal Tournament");
         title.setFont(titleFont);
         title.setForeground(arcadeGold);
@@ -103,12 +101,10 @@ public class HappyMealGame extends JFrame implements ActionListener {
         ageField = new JTextField(15);
         styleField(ageField, inputFont, arcadeGold, terminalGreen);
 
-        // ================= CONFIRM BUTTON =================
         confirmButton = new JButton("CONFIRM");
         styleButton(confirmButton, new Color(220, 20, 60));
         confirmButton.addActionListener(this);
 
-        // ================= BACK BUTTON =================
         backButton = new JButton("BACK");
         styleButton(backButton, new Color(30, 144, 255));
 
@@ -121,7 +117,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
             dispose();
         });
 
-        // ================= ADD UI =================
         formPanel.add(title);
         formPanel.add(Box.createRigidArea(new Dimension(0, 40)));
 
@@ -155,7 +150,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
         };
     }
 
-    // ================= FIELD STYLE =================
     private void styleField(JTextField field, Font font, Color borderColor, Color textColor) {
         field.setFont(font);
         field.setBackground(new Color(10, 10, 15));
@@ -170,7 +164,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
         field.setAlignmentX(Component.CENTER_ALIGNMENT);
     }
 
-    // ================= BUTTON STYLE =================
     private void styleButton(JButton btn, Color base) {
 
         btn.setFont(new Font("Monospaced", Font.BOLD, 20));
@@ -240,7 +233,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
         });
     }
 
-    // ================= CONFIRM =================
     @Override
     public void actionPerformed(ActionEvent e) {
 
@@ -266,7 +258,6 @@ public class HappyMealGame extends JFrame implements ActionListener {
         dispose();
     }
 
-    // ================= MAIN =================
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new HappyMealGame().setVisible(true));
     }
