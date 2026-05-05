@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # OOP2-Happy-Meal
 
 
@@ -20,3 +21,6 @@ After running go to your [Chosen-File-Name].iml
 #5 run the code again. 
 
 lmk if it doesn't work
+=======
+# OOP2-Happy-Meal
+>>>>>>> ba45c2d (my local project changes)

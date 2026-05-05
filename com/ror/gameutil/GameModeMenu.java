@@ -20,6 +20,7 @@ public class GameModeMenu extends JFrame implements ActionListener {
 
     public GameModeMenu(String name) {
         this.playerName = name;
+<<<<<<< HEAD
 
         // --- FIX: Create a new SoundManager if we didn't bring one! ---
         this.sound = new SoundManager();
@@ -27,11 +28,15 @@ public class GameModeMenu extends JFrame implements ActionListener {
         // NOTE: Uncomment the line below and change "playMusic" to whatever method your SoundManager uses!
         // this.sound.playMusic("/images/BGM/bgm_main.wav");
 
+=======
+        this.sound = null;
+>>>>>>> ba45c2d (my local project changes)
         initUI();
     }
 
     public GameModeMenu(String name, SoundManager sound) {
         this.playerName = name;
+<<<<<<< HEAD
 
         // --- FIX: If sound is null, create a new one. Otherwise, keep using the current one. ---
         this.sound = (sound != null) ? sound : new SoundManager();
@@ -39,6 +44,9 @@ public class GameModeMenu extends JFrame implements ActionListener {
         // NOTE: Uncomment the line below and change "playMusic" to whatever method your SoundManager uses!
         // this.sound.playMusic("/images/BGM/bgm_main.wav");
 
+=======
+        this.sound = sound;
+>>>>>>> ba45c2d (my local project changes)
         initUI();
     }
 
@@ -148,8 +156,16 @@ public class GameModeMenu extends JFrame implements ActionListener {
         btn.setForeground(Color.WHITE);
         btn.setFocusPainted(false);
         btn.setContentAreaFilled(false);
+<<<<<<< HEAD
         btn.setBorderPainted(false);
         btn.setBorder(null);
+=======
+
+        // --- THE FIX: Kill Swing's default border ---
+        btn.setBorderPainted(false);
+        btn.setBorder(null);
+
+>>>>>>> ba45c2d (my local project changes)
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
 
@@ -241,6 +257,7 @@ public class GameModeMenu extends JFrame implements ActionListener {
             if (difficulty == null) return;
 
         } else if (e.getSource() == arcade) {
+<<<<<<< HEAD
 
             if (sound != null) {
                 sound.stop();
@@ -257,6 +274,9 @@ public class GameModeMenu extends JFrame implements ActionListener {
 
         if (sound != null) {
             sound.stop();
+=======
+            selectedMode = "Arcade";
+>>>>>>> ba45c2d (my local project changes)
         }
 
         new HeroSelection(playerName, selectedMode, difficulty, sound).setVisible(true);

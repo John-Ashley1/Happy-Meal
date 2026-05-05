@@ -64,6 +64,7 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
         loadSprites();
 
+<<<<<<< HEAD
         // --- NEW: STRICTLY ENFORCE MARK AS THE ARCADE HERO ---
         // We completely ignore the 'selectedHero' passed into the constructor.
         this.currentHero = new Mark();
@@ -75,6 +76,28 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
         player = new Player(animationFolder, spritePrefix, TILE_SIZE);
 
         // --- Initialize the Story Dialogue! ---
+=======
+        if (selectedHero == null) {
+            selectedHero = new Mark();
+        }
+
+        this.currentHero = selectedHero;
+
+        String animationFolder = "soldier";
+        String spritePrefix = "Soldier";
+
+        if (selectedHero.getName().contains("Mark")) {
+            animationFolder = "soldier";
+            spritePrefix = "Soldier";
+        } else if (selectedHero.getName().contains("Ted")) {
+            animationFolder = "orc";
+            spritePrefix = "Orc";
+        }
+
+        player = new Player(animationFolder, spritePrefix, TILE_SIZE);
+
+        // --- NEW: Initialize the Story Dialogue! ---
+>>>>>>> ba45c2d (my local project changes)
         String[] story = {
                 "You have entered the arena, " + currentHero.getName() + "...",
                 "The air is cold, and the shadows hide your enemies.",
@@ -164,7 +187,11 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     }
 
     private void update() {
+<<<<<<< HEAD
         // Freeze the game logic if the dialogue is active!
+=======
+        // --- NEW: Freeze the game logic if the dialogue is active! ---
+>>>>>>> ba45c2d (my local project changes)
         if (isDialogueActive) return;
 
         int cols = roomMap[0].length;
@@ -262,8 +289,14 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
             g2d.drawString("[E] ENTER ARENA", (7 * TILE_SIZE) - 5, TILE_SIZE);
         }
 
+<<<<<<< HEAD
         // Draw the dialogue box on top of everything!
         if (isDialogueActive) {
+=======
+        // --- NEW: Draw the dialogue box on top of everything! ---
+        if (isDialogueActive) {
+            // Because graphics are scaled by 3.0, we divide our actual 816x624 window by 3
+>>>>>>> ba45c2d (my local project changes)
             dialogue.render(g2d, 272, 208);
         }
     }
@@ -272,7 +305,11 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
     public void keyPressed(KeyEvent e) {
         int code = e.getKeyCode();
 
+<<<<<<< HEAD
         // Intercept all inputs if dialogue is running
+=======
+        // --- NEW: Intercept all inputs if dialogue is running ---
+>>>>>>> ba45c2d (my local project changes)
         if (isDialogueActive) {
             if (code == KeyEvent.VK_SPACE || code == KeyEvent.VK_ENTER) {
                 dialogue.advance();
@@ -280,7 +317,11 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
                     isDialogueActive = false; // Unfreeze the game!
                 }
             }
+<<<<<<< HEAD
             return;
+=======
+            return; // Exit here so WASD doesn't move the player during the story
+>>>>>>> ba45c2d (my local project changes)
         }
 
         if (code == KeyEvent.VK_W || code == KeyEvent.VK_UP) upPressed = true;
@@ -322,6 +363,10 @@ public class ArcadeGamePanel extends JPanel implements Runnable, KeyListener {
 
     @Override
     public void keyReleased(KeyEvent e) {
+<<<<<<< HEAD
+=======
+        // Prevent keys from getting "stuck" if you were holding them when dialogue ended
+>>>>>>> ba45c2d (my local project changes)
         if (isDialogueActive) return;
 
         int code = e.getKeyCode();

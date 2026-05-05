@@ -299,6 +299,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
     }
 
     private JPanel buildBottomBar() {
+<<<<<<< HEAD
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottom.setBackground(new Color(14, 14, 24));
         bottom.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(40, 40, 70)));
@@ -306,6 +307,33 @@ public class GuiBattleArena extends JFrame implements BattleView {
         hint.setFont(new Font("Monospaced", Font.PLAIN, 11));
         hint.setForeground(new Color(90, 90, 120));
         bottom.add(hint);
+=======
+        JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setBackground(new Color(14, 14, 24));
+        bottom.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(40, 40, 70)));
+
+        JLabel hint = new JLabel("Select a skill to attack — Best of 3 Rounds | [ESC] Pause Menu", SwingConstants.CENTER);
+        hint.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        hint.setForeground(new Color(90, 90, 120));
+
+        JButton backButton = new JButton("BACK");
+        backButton.setFont(new Font("Monospaced", Font.BOLD, 14));
+        backButton.setBackground(new Color(220, 20, 60));
+        hint.setForeground(new Color(90, 90, 120));
+        backButton.setFocusPainted(false);
+        backButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        backButton.addActionListener(e -> {
+            stopIdleTimer();
+            stopBattleMusic();
+            new GameModeMenu("Player").setVisible(true);
+            dispose();
+        });
+
+        bottom.add(backButton, BorderLayout.WEST);
+        bottom.add(hint, BorderLayout.CENTER);
+
+>>>>>>> ba45c2d (my local project changes)
         return bottom;
     }
 
