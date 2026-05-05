@@ -7,7 +7,7 @@ import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl; // Added for volume control
+import javax.sound.sampled.FloatControl;
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
@@ -42,7 +42,6 @@ public class GuiBattleArena extends JFrame implements BattleView {
     private static final int  IDLE_HP_PENALTY = 100;
     private static final int  SKILL_MANA_COST = 2;
 
-    // --- AUDIO CLIP ---
     private Clip battleMusic;
 
     private java.util.Map<Entity, Integer> manaHalfPoints = new java.util.HashMap<>();
@@ -80,11 +79,9 @@ public class GuiBattleArena extends JFrame implements BattleView {
         logMessage("⚔  BATTLE START!  " + p1.getName() + "  vs  " + p2.getName() + (isAiMatch ? " [AI]" : ""));
         startIdleTimer();
 
-        // --- START THE MUSIC! ---
         playBattleMusic();
     }
 
-    // --- AUDIO METHODS ---
     private void playBattleMusic() {
         try {
             java.net.URL url = getClass().getResource("/images/BGM/fightbg.wav");
@@ -93,17 +90,11 @@ public class GuiBattleArena extends JFrame implements BattleView {
                 battleMusic = AudioSystem.getClip();
                 battleMusic.open(audioIn);
 
-                // --- THE FIX: AUDIBLE VOLUME CONTROL ---
                 FloatControl gainControl = (FloatControl) battleMusic.getControl(FloatControl.Type.MASTER_GAIN);
-
-                // Changed from -40.0f to -10.0f so you can actually hear it!
-                gainControl.setValue(-20.0f);
-                // ---------------------------
+                gainControl.setValue(-10.0f);
 
                 battleMusic.loop(Clip.LOOP_CONTINUOUSLY);
                 battleMusic.start();
-            } else {
-                System.err.println("CRITICAL: Could not find battle music file at /images/BGM/fightbg.wav");
             }
         } catch (Exception e) {
             System.err.println("Error playing battle music: " + e.getMessage());
@@ -136,12 +127,19 @@ public class GuiBattleArena extends JFrame implements BattleView {
         Action escapeAction = new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // --- THE FIX: Using the 4-argument constructor to handle music on all buttons ---
                 MainMenu pauseMenu = new MainMenu(
                         GuiBattleArena.this,
-                        () -> {},
-                        () -> {
+                        () -> { /* onResume: do nothing special */ },
+                        () -> { // onBackToMenu:
                             stopIdleTimer();
-                            stopBattleMusic(); // Stop music on exit!
+                            stopBattleMusic(); // CRITICAL: Stop music before leaving!
+                            new GameModeMenu("Player").setVisible(true);
+                            dispose();
+                        },
+                        () -> { // onQuit:
+                            stopIdleTimer();
+                            stopBattleMusic(); // CRITICAL: Stop music before leaving!
                             new IntroScreen().setVisible(true);
                             dispose();
                         }
@@ -567,7 +565,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
     private void handleArcadeDefeat() {
         stopIdleTimer();
-        stopBattleMusic(); // Stop music on defeat popup
+        stopBattleMusic();
 
         Object[] options = {"Retry", "Quit"};
         int choice = JOptionPane.showOptionDialog(this,
@@ -726,7 +724,7 @@ public class GuiBattleArena extends JFrame implements BattleView {
 
     private void routeToNextScreen() {
         stopIdleTimer();
-        stopBattleMusic(); // Stop music when returning to menu or advancing!
+        stopBattleMusic();
         dispose();
 
         if ("Arcade".equalsIgnoreCase(mode)) {
